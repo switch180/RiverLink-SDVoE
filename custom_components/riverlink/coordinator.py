@@ -7,7 +7,23 @@ from typing import TYPE_CHECKING, Any
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import RiverLinkApiClientError
-from .const import LOGGER
+from .const import (
+    ATTR_ACTIVE,
+    ATTR_DEVICE_ID,
+    ATTR_DEVICE_NAME,
+    ATTR_FIRMWARE_COMMENT,
+    ATTR_FIRMWARE_VERSION,
+    ATTR_IP_ADDRESS,
+    ATTR_SOURCE_DEVICE_ID,
+    ATTR_SOURCE_DEVICE_NAME,
+    ATTR_STREAM_ADDRESS,
+    ATTR_STREAM_ENABLED,
+    ATTR_STREAM_INDEX,
+    ATTR_STREAM_STATE,
+    ATTR_STREAM_TYPE,
+    ATTR_TEMPERATURE,
+    LOGGER,
+)
 
 if TYPE_CHECKING:
     from .data import RiverLinkConfigEntry
@@ -58,7 +74,7 @@ class RiverLinkDataUpdateCoordinator(DataUpdateCoordinator):
                 
                 # Build stream map from transmitter streams
                 for stream in transmitter_data.get("streams", []):
-                    address = stream.get("address")
+                    address = stream.get(ATTR_STREAM_ADDRESS)
                     if address and address != "0.0.0.0":
                         stream_map[address] = device_id
         
@@ -124,13 +140,13 @@ class RiverLinkDataUpdateCoordinator(DataUpdateCoordinator):
                 source_device_name = transmitters[source_device_id].get("device_name")
             
             device_data["subscriptions"].append({
-                "type": sub_type,
-                "index": sub.get("index", 0),
-                "address": address,
-                "enabled": enabled,
-                "state": state,
-                "source_device_id": source_device_id,
-                "source_device_name": source_device_name,
+                ATTR_STREAM_TYPE: sub_type,
+                ATTR_STREAM_INDEX: sub.get("index", 0),
+                ATTR_STREAM_ADDRESS: address,
+                ATTR_STREAM_ENABLED: enabled,
+                ATTR_STREAM_STATE: state,
+                ATTR_SOURCE_DEVICE_ID: source_device_id,
+                ATTR_SOURCE_DEVICE_NAME: source_device_name,
             })
         
         return device_data
@@ -162,11 +178,11 @@ class RiverLinkDataUpdateCoordinator(DataUpdateCoordinator):
             stream_status = stream.get("status", {})
             
             device_data["streams"].append({
-                "type": stream_type,
-                "index": stream.get("index", 0),
-                "address": stream_config.get("address", "0.0.0.0"),
-                "enabled": stream_config.get("enable", False),
-                "state": stream_status.get("state", "STOPPED"),
+                ATTR_STREAM_TYPE: stream_type,
+                ATTR_STREAM_INDEX: stream.get("index", 0),
+                ATTR_STREAM_ADDRESS: stream_config.get("address", "0.0.0.0"),
+                ATTR_STREAM_ENABLED: stream_config.get("enable", False),
+                ATTR_STREAM_STATE: stream_status.get("state", "STOPPED"),
             })
         
         return device_data
