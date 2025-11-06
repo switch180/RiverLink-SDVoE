@@ -1,21 +1,23 @@
 {
-    "config": {
-        "step": {
-            "user": {
-                "description": "If you need help with the configuration have a look here: https://github.com/switch180/RiverLink-SDVoE",
-                "data": {
-                    "username": "Username",
-                    "password": "Password"
-                }
-            }
-        },
-        "error": {
-            "auth": "Username/Password is wrong.",
-            "connection": "Unable to connect to the server.",
-            "unknown": "Unknown error occurred."
-        },
-        "abort": {
-            "already_configured": "This entry is already configured."
+  "config": {
+    "step": {
+      "user": {
+        "title": "RiverLink SDVoE Matrix Setup",
+        "description": "Configure your SDVoE API server connection. If you need help, visit: https://github.com/switch180/RiverLink-SDVoE",
+        "data": {
+          "host": "API Server IP Address",
+          "port": "API Server Port",
+          "api_version": "BlueRiver API Version"
         }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to SDVoE API server. Please check the IP address and port.",
+      "invalid_version": "Incompatible API version.",
+      "unknown": "Unexpected error occurred."
+    },
+    "abort": {
+      "already_configured": "This SDVoE API server is already configured."
     }
+  }
 }
