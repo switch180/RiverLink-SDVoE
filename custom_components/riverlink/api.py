@@ -277,3 +277,69 @@ class RiverLinkApiClient:
                 raise RiverLinkApiClientError(msg)
             
             return response
+
+    async def async_join_subscription(
+        self,
+        transmitter_id: str,
+        receiver_id: str,
+        stream_type: str = "HDMI",
+        tx_index: int = 0,
+        rx_index: int = 0,
+    ) -> dict[str, Any]:
+        """
+        Join transmitter stream to receiver subscription.
+        Audio (HDMI_AUDIO) automatically follows HDMI join.
+        
+        Args:
+            transmitter_id: Transmitter device ID
+            receiver_id: Receiver device ID
+            stream_type: Stream type (default: HDMI)
+            tx_index: Transmitter stream index (default: 0)
+            rx_index: Receiver subscription index (default: 0)
+        
+        Returns:
+            API response dict
+        """
+        if not self.is_connected:
+            await self.connect()
+        
+        command = f"join {transmitter_id}:{stream_type}:{tx_index} {receiver_id}:{stream_type}:{rx_index}"
+        response = await self._send_command(command)
+        
+        if response.get("status") != "SUCCESS":
+            error = response.get("error", {})
+            msg = f"Failed to join subscription: {error.get('message', 'Unknown error')}"
+            raise RiverLinkApiClientError(msg)
+        
+        return response
+
+    async def async_leave_subscription(
+        self,
+        device_id: str,
+        stream_type: str = "HDMI",
+        index: int = 0,
+    ) -> dict[str, Any]:
+        """
+        Leave a subscription.
+        Audio (HDMI_AUDIO) automatically stops when leaving HDMI.
+        
+        Args:
+            device_id: Receiver device ID
+            stream_type: Stream type (default: HDMI)
+            index: Subscription index (default: 0)
+        
+        Returns:
+            API response dict
+        """
+        if not self.is_connected:
+            await self.connect()
+        
+        command = f"leave {device_id}:{stream_type}:{index}"
+        response = await self._send_command(command)
+        
+        if response.get("status") != "SUCCESS":
+            error = response.get("error", {})
+            msg = f"Failed to leave subscription: {error.get('message', 'Unknown error')}"
+            raise RiverLinkApiClientError(msg)
+        
+        return response
