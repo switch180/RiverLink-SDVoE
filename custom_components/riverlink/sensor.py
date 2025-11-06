@@ -15,6 +15,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import (
+    ATTR_ACTIVE,
     ATTR_DEVICE_ID,
     ATTR_DEVICE_NAME,
     ATTR_FIRMWARE_VERSION,
@@ -26,6 +27,7 @@ from .const import (
     ATTR_STREAM_INDEX,
     ATTR_STREAM_STATE,
     ATTR_STREAM_TYPE,
+    ATTR_TEMPERATURE,
     DOMAIN,
     STREAM_TYPE_HDMI,
     STREAM_TYPE_HDMI_AUDIO,
