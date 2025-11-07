@@ -296,9 +296,9 @@ class RiverLinkDataUpdateCoordinator(DataUpdateCoordinator):
             ATTR_RESOLUTION_APPLIES: applies,
             ATTR_PENDING_RESOLUTION_PRESET: pending_preset,
             # Video signal information (from HDMI_ENCODER status)
-            ATTR_VIDEO_SIGNAL_COLOR_SPACE: video_signal.get("color_space"),
-            ATTR_VIDEO_SIGNAL_BITS_PER_PIXEL: video_signal.get("bits_per_pixel"),
-            ATTR_VIDEO_SIGNAL_SCAN_MODE: video_signal.get("scan_mode"),
+            ATTR_VIDEO_SIGNAL_COLOR_SPACE: video_signal.get(ATTR_VIDEO_SIGNAL_COLOR_SPACE),
+            ATTR_VIDEO_SIGNAL_BITS_PER_PIXEL: video_signal.get(ATTR_VIDEO_SIGNAL_BITS_PER_PIXEL),
+            ATTR_VIDEO_SIGNAL_SCAN_MODE: video_signal.get(ATTR_VIDEO_SIGNAL_SCAN_MODE),
             ATTR_HDCP_PROTECTED: video_signal.get(ATTR_HDCP_PROTECTED),
             ATTR_HDCP_VERSION: video_signal.get(ATTR_HDCP_VERSION),
         }
@@ -356,9 +356,9 @@ class RiverLinkDataUpdateCoordinator(DataUpdateCoordinator):
             ATTR_RESOLUTION_WIDTH: input_signal.get("width"),
             ATTR_RESOLUTION_HEIGHT: input_signal.get("height"),
             ATTR_RESOLUTION_FPS: input_signal.get("fps"),
-            ATTR_VIDEO_SIGNAL_COLOR_SPACE: input_signal.get("color_space"),
-            ATTR_VIDEO_SIGNAL_BITS_PER_PIXEL: input_signal.get("bits_per_pixel"),
-            ATTR_VIDEO_SIGNAL_SCAN_MODE: input_signal.get("scan_mode"),
+            ATTR_VIDEO_SIGNAL_COLOR_SPACE: input_signal.get(ATTR_VIDEO_SIGNAL_COLOR_SPACE),
+            ATTR_VIDEO_SIGNAL_BITS_PER_PIXEL: input_signal.get(ATTR_VIDEO_SIGNAL_BITS_PER_PIXEL),
+            ATTR_VIDEO_SIGNAL_SCAN_MODE: input_signal.get(ATTR_VIDEO_SIGNAL_SCAN_MODE),
             ATTR_HDCP_PROTECTED: input_signal.get(ATTR_HDCP_PROTECTED),
             ATTR_HDCP_VERSION: input_signal.get(ATTR_HDCP_VERSION),
         }
