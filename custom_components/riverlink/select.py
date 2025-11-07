@@ -11,10 +11,12 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import (
     ATTR_DEVICE_NAME,
     ATTR_DISPLAY_MODE,
+    ATTR_PENDING_RESOLUTION_PRESET,
     ATTR_RESOLUTION_APPLIES,
     ATTR_RESOLUTION_FPS,
     ATTR_RESOLUTION_HEIGHT,
     ATTR_RESOLUTION_PRESET,
+    ATTR_RESOLUTION_PRESET_STATUS,
     ATTR_RESOLUTION_WIDTH,
     ATTR_SOURCE_DEVICE_NAME,
     ATTR_STREAM_INDEX,
@@ -28,6 +30,9 @@ from .const import (
     DISPLAY_MODE_GENLOCK,
     DISPLAY_MODE_GENLOCK_SCALING,
     LOGGER,
+    PRESET_STATUS_APPLIED,
+    PRESET_STATUS_PENDING,
+    PRESET_STATUS_STORED,
     RESOLUTION_PRESETS,
 )
 from .entity import RiverLinkEntity
@@ -245,11 +250,21 @@ class RiverLinkDisplayModeSelect(RiverLinkEntity, SelectEntity):
                          DISPLAY_MODE_FASTSWITCH_CROP]:
             raise ValueError(f"Unknown display mode: {option}")
         
-        # Get current resolution from receiver data
+        # Get receiver data
         receiver = self.coordinator.data["receivers"].get(self._device_id, {})
-        width = receiver.get(ATTR_RESOLUTION_WIDTH, 1920)
-        height = receiver.get(ATTR_RESOLUTION_HEIGHT, 1080)
-        fps = receiver.get(ATTR_RESOLUTION_FPS, 60)
+        
+        # Check if there's a pending preset to use
+        pending_preset = receiver.get(ATTR_PENDING_RESOLUTION_PRESET)
+        if pending_preset and option != DISPLAY_MODE_GENLOCK:
+            # Use pending preset resolution
+            width, height, fps = RESOLUTION_PRESETS[pending_preset]
+            # Clear pending preset after using it
+            receiver[ATTR_PENDING_RESOLUTION_PRESET] = None
+        else:
+            # Use current resolution from device
+            width = receiver.get(ATTR_RESOLUTION_WIDTH, 1920)
+            height = receiver.get(ATTR_RESOLUTION_HEIGHT, 1080)
+            fps = receiver.get(ATTR_RESOLUTION_FPS, 60)
         
         # Send command
         client = self.coordinator.config_entry.runtime_data.client
@@ -270,10 +285,6 @@ class RiverLinkDisplayModeSelect(RiverLinkEntity, SelectEntity):
                     height=height,
                     fps=fps,
                 )
-            
-            # Update coordinator data
-            receiver[ATTR_DISPLAY_MODE] = option
-            receiver[ATTR_RESOLUTION_APPLIES] = option != DISPLAY_MODE_GENLOCK
             
             LOGGER.info(
                 "Receiver %s display mode changed to %s",
@@ -314,60 +325,71 @@ class RiverLinkResolutionPresetSelect(RiverLinkEntity, SelectEntity):
     
     @property
     def current_option(self) -> str | None:
-        """Return currently selected resolution preset, or None if custom."""
+        """Return currently selected or pending resolution preset."""
         receiver = self.coordinator.data["receivers"].get(self._device_id)
         if not receiver:
             return DEFAULT_RESOLUTION_PRESET
         
-        preset = receiver.get(ATTR_RESOLUTION_PRESET, DEFAULT_RESOLUTION_PRESET)
+        mode = receiver.get(ATTR_DISPLAY_MODE, DEFAULT_DISPLAY_MODE)
         
-        # If custom resolution, return None (check extra_state_attributes for actual values)
+        # If in genlock mode and there's a pending preset, show it
+        if mode == DISPLAY_MODE_GENLOCK:
+            pending = receiver.get(ATTR_PENDING_RESOLUTION_PRESET)
+            if pending:
+                return pending
+        
+        # Otherwise show actual preset
+        preset = receiver.get(ATTR_RESOLUTION_PRESET, DEFAULT_RESOLUTION_PRESET)
         if preset == "Custom":
             return None
         
-        # Otherwise show preset with status suffix
-        applies = receiver.get(ATTR_RESOLUTION_APPLIES, True)
-        if applies:
-            return f"{preset} ✓"
-        else:
-            return f"{preset} (Stored)"
+        return preset
     
     @property
     def extra_state_attributes(self) -> dict:
         """Return extra attributes."""
         receiver = self.coordinator.data["receivers"].get(self._device_id, {})
         
-        return {
+        mode = receiver.get(ATTR_DISPLAY_MODE, DEFAULT_DISPLAY_MODE)
+        applies = receiver.get(ATTR_RESOLUTION_APPLIES, True)
+        pending = receiver.get(ATTR_PENDING_RESOLUTION_PRESET)
+        
+        if mode == DISPLAY_MODE_GENLOCK and pending:
+            status_key = PRESET_STATUS_PENDING      # Pending preset in genlock mode
+        elif applies:
+            status_key = PRESET_STATUS_APPLIED      # Stored and applied
+        else:
+            status_key = PRESET_STATUS_STORED       # Stored but not applied
+        
+        attrs = {
             ATTR_RESOLUTION_WIDTH: receiver.get(ATTR_RESOLUTION_WIDTH, 1920),
             ATTR_RESOLUTION_HEIGHT: receiver.get(ATTR_RESOLUTION_HEIGHT, 1080),
             ATTR_RESOLUTION_FPS: receiver.get(ATTR_RESOLUTION_FPS, 60),
-            ATTR_RESOLUTION_APPLIES: receiver.get(ATTR_RESOLUTION_APPLIES, True),
+            ATTR_RESOLUTION_APPLIES: applies,
             "category": "broadcast" if receiver.get(ATTR_RESOLUTION_HEIGHT, 1080) <= 2160 else "monitor",
+            ATTR_RESOLUTION_PRESET_STATUS: status_key,
         }
+        
+        # Include pending preset if set
+        if pending:
+            attrs[ATTR_PENDING_RESOLUTION_PRESET] = pending
+        
+        return attrs
     
     async def async_select_option(self, option: str) -> None:
         """Change resolution preset."""
-        # Strip suffix if present
-        clean_option = option.replace(" ✓", "").replace(" (Stored)", "")
-        
         # Get resolution values
-        if clean_option not in RESOLUTION_PRESETS:
-            raise ValueError(f"Unknown resolution preset: {clean_option}")
+        if option not in RESOLUTION_PRESETS:
+            raise ValueError(f"Unknown resolution preset: {option}")
         
-        width, height, fps = RESOLUTION_PRESETS[clean_option]
+        width, height, fps = RESOLUTION_PRESETS[option]
         
         # Get current display mode
         receiver = self.coordinator.data["receivers"].get(self._device_id, {})
         mode = receiver.get(ATTR_DISPLAY_MODE, DEFAULT_DISPLAY_MODE)
         
-        # Update stored resolution
-        receiver[ATTR_RESOLUTION_WIDTH] = width
-        receiver[ATTR_RESOLUTION_HEIGHT] = height
-        receiver[ATTR_RESOLUTION_FPS] = fps
-        receiver[ATTR_RESOLUTION_PRESET] = clean_option
-        
         try:
-            # Apply resolution for all modes except genlock
+            # Apply resolution immediately for all modes except genlock
             if mode in [DISPLAY_MODE_GENLOCK_SCALING, DISPLAY_MODE_FASTSWITCH,
                        DISPLAY_MODE_FASTSWITCH_STRETCH, DISPLAY_MODE_FASTSWITCH_CROP]:
                 client = self.coordinator.config_entry.runtime_data.client
@@ -378,25 +400,27 @@ class RiverLinkResolutionPresetSelect(RiverLinkEntity, SelectEntity):
                     height=height,
                     fps=fps,
                 )
-                receiver[ATTR_RESOLUTION_APPLIES] = True
                 LOGGER.info(
-                    "Receiver %s resolution changed to %s (%dx%d @ %d fps)",
+                    "Receiver %s resolution applied: %s (%dx%d @ %d fps)",
                     self._device_id,
-                    clean_option,
+                    option,
                     width,
                     height,
                     fps,
                 )
+                # Refresh to get actual device state
+                await self.coordinator.async_request_refresh()
+                
             elif mode == DISPLAY_MODE_GENLOCK:
-                # In genlock mode, just store it
-                receiver[ATTR_RESOLUTION_APPLIES] = False
+                # In genlock mode, store as pending (persists across refreshes)
+                receiver[ATTR_PENDING_RESOLUTION_PRESET] = option
                 LOGGER.info(
-                    "Receiver %s resolution stored: %s (will apply when switching from genlock)",
+                    "Receiver %s pending resolution set: %s (will apply when switching from genlock)",
                     self._device_id,
-                    clean_option,
+                    option,
                 )
-            
-            await self.coordinator.async_request_refresh()
+                # Don't refresh - keep the pending value in coordinator data
+                
         except Exception as exception:
             LOGGER.error(
                 "Failed to set resolution for receiver %s: %s",

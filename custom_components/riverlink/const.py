@@ -105,3 +105,10 @@ ATTR_RESOLUTION_HEIGHT = "resolution_height"
 ATTR_RESOLUTION_FPS = "resolution_fps"
 ATTR_RESOLUTION_PRESET = "resolution_preset"
 ATTR_RESOLUTION_APPLIES = "resolution_applies"
+ATTR_PENDING_RESOLUTION_PRESET = "pending_resolution_preset"
+ATTR_RESOLUTION_PRESET_STATUS = "resolution_preset_status"
+
+# Resolution preset status values
+PRESET_STATUS_PENDING = "pending"    # Pending preset in genlock mode
+PRESET_STATUS_APPLIED = "applied"    # Resolution is applied to device
+PRESET_STATUS_STORED = "stored"      # Resolution stored but not applied

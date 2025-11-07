@@ -15,6 +15,7 @@ from .const import (
     ATTR_FIRMWARE_COMMENT,
     ATTR_FIRMWARE_VERSION,
     ATTR_IP_ADDRESS,
+    ATTR_PENDING_RESOLUTION_PRESET,
     ATTR_RESOLUTION_APPLIES,
     ATTR_RESOLUTION_FPS,
     ATTR_RESOLUTION_HEIGHT,
@@ -30,6 +31,11 @@ from .const import (
     ATTR_TEMPERATURE,
     DEFAULT_DISPLAY_MODE,
     DEFAULT_RESOLUTION_PRESET,
+    DISPLAY_MODE_FASTSWITCH,
+    DISPLAY_MODE_FASTSWITCH_CROP,
+    DISPLAY_MODE_FASTSWITCH_STRETCH,
+    DISPLAY_MODE_GENLOCK,
+    DISPLAY_MODE_GENLOCK_SCALING,
     LOGGER,
     RESOLUTION_PRESETS,
 )
@@ -158,7 +164,7 @@ class RiverLinkDataUpdateCoordinator(DataUpdateCoordinator):
                 
                 # Check if using direct subscription (Genlock passthrough)
                 if ref_class == "SUBSCRIPTION" and ref_type == "HDMI":
-                    mode = "genlock"
+                    mode = DISPLAY_MODE_GENLOCK
                 
                 # Check if using frame buffer (Genlock Scaling or Fast Switch)
                 elif ref_class == "NODE" and ref_type == "FRAME_BUFFER":
@@ -166,16 +172,16 @@ class RiverLinkDataUpdateCoordinator(DataUpdateCoordinator):
                         fb_mode = frame_buffer.get("configuration", {}).get("display_mode", "")
                         
                         if fb_mode == "GENLOCK_SCALING":
-                            mode = "genlock_scaling"
+                            mode = DISPLAY_MODE_GENLOCK_SCALING
                         elif fb_mode == "FAST_SWITCHED":
-                            mode = "fastswitch"
+                            mode = DISPLAY_MODE_FASTSWITCH
                         elif fb_mode == "FAST_SWITCHED_STRETCH":
-                            mode = "fastswitch_stretch"
+                            mode = DISPLAY_MODE_FASTSWITCH_STRETCH
                         elif fb_mode == "FAST_SWITCHED_CROP":
-                            mode = "fastswitch_crop"
+                            mode = DISPLAY_MODE_FASTSWITCH_CROP
                         else:
                             # Unknown frame buffer mode, default to fastswitch
-                            mode = "fastswitch"
+                            mode = DISPLAY_MODE_FASTSWITCH
         
         return {
             "mode": mode,
@@ -216,7 +222,11 @@ class RiverLinkDataUpdateCoordinator(DataUpdateCoordinator):
         preset = self._find_resolution_preset(width, height, fps)
         
         # Calculate if resolution applies (not genlock passthrough)
-        applies = mode != "genlock"
+        applies = mode != DISPLAY_MODE_GENLOCK
+        
+        # Preserve pending preset if it exists (persists across refreshes)
+        old_receiver = self.data.get("receivers", {}).get(device_id, {}) if hasattr(self, 'data') else {}
+        pending_preset = old_receiver.get(ATTR_PENDING_RESOLUTION_PRESET)
         
         # Extract basic device info
         device_data = {
@@ -235,6 +245,7 @@ class RiverLinkDataUpdateCoordinator(DataUpdateCoordinator):
             ATTR_RESOLUTION_FPS: fps,
             ATTR_RESOLUTION_PRESET: preset,
             ATTR_RESOLUTION_APPLIES: applies,
+            ATTR_PENDING_RESOLUTION_PRESET: pending_preset,
         }
         
         # Parse subscriptions
