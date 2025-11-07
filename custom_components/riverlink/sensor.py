@@ -67,7 +67,6 @@ async def async_setup_entry(
             RiverLinkReceiverAudioSourceSensor(coordinator, device_id),
             RiverLinkReceiverIPAddressSensor(coordinator, device_id),
             RiverLinkReceiverFirmwareSensor(coordinator, device_id),
-            RiverLinkVideoModeStatusSensor(coordinator, device_id),
         ])
     
     # Create entities for all transmitters
@@ -482,52 +481,3 @@ class RiverLinkTransmitterFirmwareSensor(RiverLinkEntity, SensorEntity):
         if transmitter:
             return transmitter.get(ATTR_FIRMWARE_VERSION)
         return None
-
-
-class RiverLinkVideoModeStatusSensor(RiverLinkEntity, SensorEntity):
-    """Sensor showing current video mode status."""
-    
-    _attr_icon = "mdi:information-outline"
-    _attr_translation_key = "video_mode_status"
-    _attr_has_entity_name = True
-    
-    def __init__(
-        self,
-        coordinator: RiverLinkDataUpdateCoordinator,
-        receiver_id: str,
-    ) -> None:
-        """Initialize video mode status sensor."""
-        super().__init__(coordinator, receiver_id)
-        self._attr_unique_id = f"{receiver_id}_video_mode_status"
-    
-    @property
-    def native_value(self) -> str:
-        """Return the current video mode status code for localization."""
-        receiver = self.coordinator.data["receivers"].get(self._device_id)
-        if not receiver:
-            return STATE_UNKNOWN
-        
-        mode = receiver.get(ATTR_DISPLAY_MODE, DEFAULT_DISPLAY_MODE)
-        applies = receiver.get(ATTR_RESOLUTION_APPLIES, True)
-        
-        # Return status codes that can be localized
-        if mode == DISPLAY_MODE_GENLOCK:
-            return "genlock_active"
-        elif applies:
-            return "active_applied"
-        else:
-            return "stored_pending"
-    
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return extra attributes."""
-        receiver = self.coordinator.data["receivers"].get(self._device_id, {})
-        mode = receiver.get(ATTR_DISPLAY_MODE, DEFAULT_DISPLAY_MODE)
-        
-        return {
-            ATTR_DISPLAY_MODE: mode,
-            ATTR_RESOLUTION_WIDTH: receiver.get(ATTR_RESOLUTION_WIDTH, 0),
-            ATTR_RESOLUTION_HEIGHT: receiver.get(ATTR_RESOLUTION_HEIGHT, 0),
-            ATTR_RESOLUTION_FPS: receiver.get(ATTR_RESOLUTION_FPS, 0),
-            ATTR_RESOLUTION_APPLIES: receiver.get(ATTR_RESOLUTION_APPLIES, True),
-        }
