@@ -225,7 +225,7 @@ class RiverLinkDataUpdateCoordinator(DataUpdateCoordinator):
         applies = mode != DISPLAY_MODE_GENLOCK
         
         # Preserve pending preset if it exists (persists across refreshes)
-        old_receiver = self.data.get("receivers", {}).get(device_id, {}) if hasattr(self, 'data') else {}
+        old_receiver = (self.data or {}).get("receivers", {}).get(device_id, {}) if hasattr(self, 'data') else {}
         pending_preset = old_receiver.get(ATTR_PENDING_RESOLUTION_PRESET)
         
         # Extract basic device info
