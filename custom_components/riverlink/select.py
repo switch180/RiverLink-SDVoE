@@ -363,8 +363,9 @@ class RiverLinkResolutionPresetSelect(RiverLinkEntity, SelectEntity):
         receiver[ATTR_RESOLUTION_PRESET] = clean_option
         
         try:
-            # Only send command if not in genlock mode
-            if mode != DISPLAY_MODE_GENLOCK:
+            # Apply resolution for all modes except genlock
+            if mode in [DISPLAY_MODE_GENLOCK_SCALING, DISPLAY_MODE_FASTSWITCH,
+                       DISPLAY_MODE_FASTSWITCH_STRETCH, DISPLAY_MODE_FASTSWITCH_CROP]:
                 client = self.coordinator.config_entry.runtime_data.client
                 await client.async_set_video_mode(
                     device_id=self._device_id,
@@ -382,7 +383,7 @@ class RiverLinkResolutionPresetSelect(RiverLinkEntity, SelectEntity):
                     height,
                     fps,
                 )
-            else:
+            elif mode == DISPLAY_MODE_GENLOCK:
                 # In genlock mode, just store it
                 receiver[ATTR_RESOLUTION_APPLIES] = False
                 LOGGER.info(
