@@ -313,16 +313,20 @@ class RiverLinkResolutionPresetSelect(RiverLinkEntity, SelectEntity):
         return list(RESOLUTION_PRESETS.keys())
     
     @property
-    def current_option(self) -> str:
-        """Return currently selected resolution with status suffix."""
+    def current_option(self) -> str | None:
+        """Return currently selected resolution preset, or None if custom."""
         receiver = self.coordinator.data["receivers"].get(self._device_id)
         if not receiver:
             return DEFAULT_RESOLUTION_PRESET
         
         preset = receiver.get(ATTR_RESOLUTION_PRESET, DEFAULT_RESOLUTION_PRESET)
-        applies = receiver.get(ATTR_RESOLUTION_APPLIES, True)
         
-        # Add visual feedback suffix
+        # If custom resolution, return None (check extra_state_attributes for actual values)
+        if preset == "Custom":
+            return None
+        
+        # Otherwise show preset with status suffix
+        applies = receiver.get(ATTR_RESOLUTION_APPLIES, True)
         if applies:
             return f"{preset} ✓"
         else:

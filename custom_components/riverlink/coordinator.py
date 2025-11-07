@@ -106,6 +106,92 @@ class RiverLinkDataUpdateCoordinator(DataUpdateCoordinator):
             "stream_map": stream_map,
         }
 
+    def _extract_video_mode_config(self, device: dict[str, Any]) -> dict[str, Any]:
+        """
+        Extract video mode configuration using correct detection logic.
+        
+        Step 1: Check HDMI_ENCODER source to determine Genlock vs Frame Buffer
+        Step 2: If Frame Buffer, check FRAME_BUFFER.display_mode for specific mode
+        
+        Returns dict with: mode, width, height, fps
+        """
+        nodes = device.get("nodes", [])
+        
+        # Find HDMI_ENCODER and FRAME_BUFFER nodes
+        hdmi_encoder = None
+        frame_buffer = None
+        
+        for node in nodes:
+            if node.get("type") == "HDMI_ENCODER":
+                hdmi_encoder = node
+            elif node.get("type") == "FRAME_BUFFER" and node.get("index") == 0:
+                frame_buffer = node
+        
+        # Default fallback values
+        mode = DEFAULT_DISPLAY_MODE
+        width = 1920
+        height = 1080
+        fps = 60
+        
+        # Get frame buffer resolution (used for all modes)
+        if frame_buffer:
+            fb_config = frame_buffer.get("configuration", {})
+            width = fb_config.get("width", 1920)
+            height = fb_config.get("height", 1080)
+            fps = fb_config.get("frames_per_second", 60)
+        
+        # Determine mode from HDMI_ENCODER source
+        if hdmi_encoder:
+            inputs = hdmi_encoder.get("inputs", [])
+            main_input = None
+            
+            for input_node in inputs:
+                if input_node.get("name") == "main":
+                    main_input = input_node
+                    break
+            
+            if main_input:
+                source = main_input.get("status", {}).get("source", {})
+                ref_class = source.get("ref_class")
+                ref_type = source.get("ref_type")
+                
+                # Check if using direct subscription (Genlock passthrough)
+                if ref_class == "SUBSCRIPTION" and ref_type == "HDMI":
+                    mode = "genlock"
+                
+                # Check if using frame buffer (Genlock Scaling or Fast Switch)
+                elif ref_class == "NODE" and ref_type == "FRAME_BUFFER":
+                    if frame_buffer:
+                        fb_mode = frame_buffer.get("configuration", {}).get("display_mode", "")
+                        
+                        if fb_mode == "GENLOCK_SCALING":
+                            mode = "genlock_scaling"
+                        elif fb_mode == "FAST_SWITCHED":
+                            mode = "fastswitch"
+                        elif fb_mode == "FAST_SWITCHED_STRETCH":
+                            mode = "fastswitch_stretch"
+                        elif fb_mode == "FAST_SWITCHED_CROP":
+                            mode = "fastswitch_crop"
+                        else:
+                            # Unknown frame buffer mode, default to fastswitch
+                            mode = "fastswitch"
+        
+        return {
+            "mode": mode,
+            "width": width,
+            "height": height,
+            "fps": fps,
+        }
+    
+    def _find_resolution_preset(self, width: int, height: int, fps: int) -> str:
+        """Find matching resolution preset or return 'Custom'."""
+        for preset_name, preset_values in RESOLUTION_PRESETS.items():
+            preset_width, preset_height, preset_fps = preset_values
+            if width == preset_width and height == preset_height and fps == preset_fps:
+                return preset_name
+        
+        return "Custom"
+    
     def _parse_receiver(
         self,
         device: dict[str, Any],
@@ -118,6 +204,19 @@ class RiverLinkDataUpdateCoordinator(DataUpdateCoordinator):
         config = device.get("configuration", {})
         status = device.get("status", {})
         
+        # Parse video mode configuration from FRAME_BUFFER and HDMI_ENCODER nodes
+        video_config = self._extract_video_mode_config(device)
+        mode = video_config.get("mode", DEFAULT_DISPLAY_MODE)
+        width = video_config.get("width", 1920)
+        height = video_config.get("height", 1080)
+        fps = video_config.get("fps", 60)
+        
+        # Find matching preset or use "Custom"
+        preset = self._find_resolution_preset(width, height, fps)
+        
+        # Calculate if resolution applies (not genlock passthrough)
+        applies = mode != "genlock"
+        
         # Extract basic device info
         device_data = {
             "device_id": device_id,
@@ -128,13 +227,13 @@ class RiverLinkDataUpdateCoordinator(DataUpdateCoordinator):
             "firmware_version": identity.get("firmware_version", "unknown"),
             "firmware_comment": identity.get("firmware_comment", ""),
             "subscriptions": [],
-            # Video mode state (default values)
-            ATTR_DISPLAY_MODE: DEFAULT_DISPLAY_MODE,
-            ATTR_RESOLUTION_WIDTH: 1920,
-            ATTR_RESOLUTION_HEIGHT: 1080,
-            ATTR_RESOLUTION_FPS: 60,
-            ATTR_RESOLUTION_PRESET: DEFAULT_RESOLUTION_PRESET,
-            ATTR_RESOLUTION_APPLIES: False,  # Default to stored (genlock mode)
+            # Video mode state (from actual device)
+            ATTR_DISPLAY_MODE: mode,
+            ATTR_RESOLUTION_WIDTH: width,
+            ATTR_RESOLUTION_HEIGHT: height,
+            ATTR_RESOLUTION_FPS: fps,
+            ATTR_RESOLUTION_PRESET: preset,
+            ATTR_RESOLUTION_APPLIES: applies,
         }
         
         # Parse subscriptions
