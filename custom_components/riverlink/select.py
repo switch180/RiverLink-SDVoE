@@ -10,11 +10,25 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import (
     ATTR_DEVICE_NAME,
+    ATTR_DISPLAY_MODE,
+    ATTR_RESOLUTION_APPLIES,
+    ATTR_RESOLUTION_FPS,
+    ATTR_RESOLUTION_HEIGHT,
+    ATTR_RESOLUTION_PRESET,
+    ATTR_RESOLUTION_WIDTH,
     ATTR_SOURCE_DEVICE_NAME,
     ATTR_STREAM_INDEX,
     ATTR_STREAM_TYPE,
+    DEFAULT_DISPLAY_MODE,
+    DEFAULT_RESOLUTION_PRESET,
     DEFAULT_STREAM_INDEX,
+    DISPLAY_MODE_FASTSWITCH,
+    DISPLAY_MODE_FASTSWITCH_CROP,
+    DISPLAY_MODE_FASTSWITCH_STRETCH,
+    DISPLAY_MODE_GENLOCK,
+    DISPLAY_MODE_GENLOCK_SCALING,
     LOGGER,
+    RESOLUTION_PRESETS,
 )
 from .entity import RiverLinkEntity
 
@@ -32,10 +46,16 @@ async def async_setup_entry(
     coordinator = entry.runtime_data.coordinator
     entities: list[SelectEntity] = []
     
-    # Create one select entity per receiver
+    # Create select entities per receiver
     for receiver_id in coordinator.data.get("receivers", {}):
         entities.append(
             RiverLinkReceiverSourceSelect(coordinator, receiver_id)
+        )
+        entities.append(
+            RiverLinkDisplayModeSelect(coordinator, receiver_id)
+        )
+        entities.append(
+            RiverLinkResolutionPresetSelect(coordinator, receiver_id)
         )
     
     async_add_entities(entities)
@@ -45,6 +65,8 @@ class RiverLinkReceiverSourceSelect(RiverLinkEntity, SelectEntity):
     """Select entity to choose video source for receiver."""
     
     _attr_icon = "mdi:video-input-hdmi"
+    _attr_translation_key = "video_source"
+    _attr_has_entity_name = True
     
     def __init__(
         self,
@@ -53,13 +75,7 @@ class RiverLinkReceiverSourceSelect(RiverLinkEntity, SelectEntity):
     ) -> None:
         """Initialize the select entity."""
         super().__init__(coordinator, receiver_id)
-        
-        receiver = coordinator.data["receivers"][receiver_id]
-        receiver_name = receiver[ATTR_DEVICE_NAME]
-        
         self._attr_unique_id = f"{receiver_id}_video_source_select"
-        self._attr_name = f"{receiver_name} Video Source"
-        self.entity_id = f"select.riverlink_{receiver_name.lower().replace(' ', '_').replace('-', '_')}_video_source"
     
     @property
     def options(self) -> list[str]:
@@ -168,6 +184,218 @@ class RiverLinkReceiverSourceSelect(RiverLinkEntity, SelectEntity):
                 "Failed to join receiver %s to %s: %s",
                 self._device_id,
                 transmitter_name,
+                exception,
+            )
+            raise
+
+
+class RiverLinkDisplayModeSelect(RiverLinkEntity, SelectEntity):
+    """Select entity for choosing video display mode."""
+    
+    _attr_icon = "mdi:monitor-arrow-down-variant"
+    _attr_translation_key = "display_mode"
+    _attr_has_entity_name = True
+    
+    def __init__(
+        self,
+        coordinator: RiverLinkDataUpdateCoordinator,
+        receiver_id: str,
+    ) -> None:
+        """Initialize display mode select."""
+        super().__init__(coordinator, receiver_id)
+        self._attr_unique_id = f"{receiver_id}_display_mode"
+    
+    @property
+    def options(self) -> list[str]:
+        """Return display mode options (keys for translation)."""
+        return [
+            DISPLAY_MODE_GENLOCK,
+            DISPLAY_MODE_GENLOCK_SCALING,
+            DISPLAY_MODE_FASTSWITCH,
+            DISPLAY_MODE_FASTSWITCH_STRETCH,
+            DISPLAY_MODE_FASTSWITCH_CROP,
+        ]
+    
+    @property
+    def current_option(self) -> str:
+        """Return currently selected display mode (key)."""
+        receiver = self.coordinator.data["receivers"].get(self._device_id)
+        if not receiver:
+            return DEFAULT_DISPLAY_MODE
+        
+        return receiver.get(ATTR_DISPLAY_MODE, DEFAULT_DISPLAY_MODE)
+    
+    @property
+    def extra_state_attributes(self) -> dict:
+        """Return extra attributes."""
+        receiver = self.coordinator.data["receivers"].get(self._device_id, {})
+        mode = receiver.get(ATTR_DISPLAY_MODE, DEFAULT_DISPLAY_MODE)
+        
+        return {
+            "mode_type": mode,
+            "requires_resolution": mode != DISPLAY_MODE_GENLOCK,
+            "latency_type": "zero-frame" if mode.startswith("genlock") else "fast-switch",
+        }
+    
+    async def async_select_option(self, option: str) -> None:
+        """Change display mode."""
+        # Validate mode
+        if option not in [DISPLAY_MODE_GENLOCK, DISPLAY_MODE_GENLOCK_SCALING,
+                         DISPLAY_MODE_FASTSWITCH, DISPLAY_MODE_FASTSWITCH_STRETCH,
+                         DISPLAY_MODE_FASTSWITCH_CROP]:
+            raise ValueError(f"Unknown display mode: {option}")
+        
+        # Get current resolution from receiver data
+        receiver = self.coordinator.data["receivers"].get(self._device_id, {})
+        width = receiver.get(ATTR_RESOLUTION_WIDTH, 1920)
+        height = receiver.get(ATTR_RESOLUTION_HEIGHT, 1080)
+        fps = receiver.get(ATTR_RESOLUTION_FPS, 60)
+        
+        # Send command
+        client = self.coordinator.config_entry.runtime_data.client
+        
+        try:
+            if option == DISPLAY_MODE_GENLOCK:
+                # Genlock doesn't need resolution
+                await client.async_set_video_mode(
+                    device_id=self._device_id,
+                    mode=option,
+                )
+            else:
+                # All other modes need resolution
+                await client.async_set_video_mode(
+                    device_id=self._device_id,
+                    mode=option,
+                    width=width,
+                    height=height,
+                    fps=fps,
+                )
+            
+            # Update coordinator data
+            receiver[ATTR_DISPLAY_MODE] = option
+            receiver[ATTR_RESOLUTION_APPLIES] = option != DISPLAY_MODE_GENLOCK
+            
+            LOGGER.info(
+                "Receiver %s display mode changed to %s",
+                self._device_id,
+                option,
+            )
+            
+            await self.coordinator.async_request_refresh()
+        except Exception as exception:
+            LOGGER.error(
+                "Failed to set display mode for receiver %s: %s",
+                self._device_id,
+                exception,
+            )
+            raise
+
+
+class RiverLinkResolutionPresetSelect(RiverLinkEntity, SelectEntity):
+    """Select entity for choosing resolution preset."""
+    
+    _attr_icon = "mdi:monitor-shimmer"
+    _attr_translation_key = "resolution_preset"
+    _attr_has_entity_name = True
+    
+    def __init__(
+        self,
+        coordinator: RiverLinkDataUpdateCoordinator,
+        receiver_id: str,
+    ) -> None:
+        """Initialize resolution preset select."""
+        super().__init__(coordinator, receiver_id)
+        self._attr_unique_id = f"{receiver_id}_resolution_preset"
+    
+    @property
+    def options(self) -> list[str]:
+        """Return resolution preset options."""
+        return list(RESOLUTION_PRESETS.keys())
+    
+    @property
+    def current_option(self) -> str:
+        """Return currently selected resolution with status suffix."""
+        receiver = self.coordinator.data["receivers"].get(self._device_id)
+        if not receiver:
+            return DEFAULT_RESOLUTION_PRESET
+        
+        preset = receiver.get(ATTR_RESOLUTION_PRESET, DEFAULT_RESOLUTION_PRESET)
+        applies = receiver.get(ATTR_RESOLUTION_APPLIES, True)
+        
+        # Add visual feedback suffix
+        if applies:
+            return f"{preset} ✓"
+        else:
+            return f"{preset} (Stored)"
+    
+    @property
+    def extra_state_attributes(self) -> dict:
+        """Return extra attributes."""
+        receiver = self.coordinator.data["receivers"].get(self._device_id, {})
+        
+        return {
+            ATTR_RESOLUTION_WIDTH: receiver.get(ATTR_RESOLUTION_WIDTH, 1920),
+            ATTR_RESOLUTION_HEIGHT: receiver.get(ATTR_RESOLUTION_HEIGHT, 1080),
+            ATTR_RESOLUTION_FPS: receiver.get(ATTR_RESOLUTION_FPS, 60),
+            ATTR_RESOLUTION_APPLIES: receiver.get(ATTR_RESOLUTION_APPLIES, True),
+            "category": "broadcast" if receiver.get(ATTR_RESOLUTION_HEIGHT, 1080) <= 2160 else "monitor",
+        }
+    
+    async def async_select_option(self, option: str) -> None:
+        """Change resolution preset."""
+        # Strip suffix if present
+        clean_option = option.replace(" ✓", "").replace(" (Stored)", "")
+        
+        # Get resolution values
+        if clean_option not in RESOLUTION_PRESETS:
+            raise ValueError(f"Unknown resolution preset: {clean_option}")
+        
+        width, height, fps = RESOLUTION_PRESETS[clean_option]
+        
+        # Get current display mode
+        receiver = self.coordinator.data["receivers"].get(self._device_id, {})
+        mode = receiver.get(ATTR_DISPLAY_MODE, DEFAULT_DISPLAY_MODE)
+        
+        # Update stored resolution
+        receiver[ATTR_RESOLUTION_WIDTH] = width
+        receiver[ATTR_RESOLUTION_HEIGHT] = height
+        receiver[ATTR_RESOLUTION_FPS] = fps
+        receiver[ATTR_RESOLUTION_PRESET] = clean_option
+        
+        try:
+            # Only send command if not in genlock mode
+            if mode != DISPLAY_MODE_GENLOCK:
+                client = self.coordinator.config_entry.runtime_data.client
+                await client.async_set_video_mode(
+                    device_id=self._device_id,
+                    mode=mode,
+                    width=width,
+                    height=height,
+                    fps=fps,
+                )
+                receiver[ATTR_RESOLUTION_APPLIES] = True
+                LOGGER.info(
+                    "Receiver %s resolution changed to %s (%dx%d @ %d fps)",
+                    self._device_id,
+                    clean_option,
+                    width,
+                    height,
+                    fps,
+                )
+            else:
+                # In genlock mode, just store it
+                receiver[ATTR_RESOLUTION_APPLIES] = False
+                LOGGER.info(
+                    "Receiver %s resolution stored: %s (will apply when switching from genlock)",
+                    self._device_id,
+                    clean_option,
+                )
+            
+            await self.coordinator.async_request_refresh()
+        except Exception as exception:
+            LOGGER.error(
+                "Failed to set resolution for receiver %s: %s",
+                self._device_id,
                 exception,
             )
             raise

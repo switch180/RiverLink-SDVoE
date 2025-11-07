@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -10,7 +10,7 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.const import EntityCategory, UnitOfTemperature
+from homeassistant.const import EntityCategory, STATE_UNKNOWN, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -18,8 +18,13 @@ from .const import (
     ATTR_ACTIVE,
     ATTR_DEVICE_ID,
     ATTR_DEVICE_NAME,
+    ATTR_DISPLAY_MODE,
     ATTR_FIRMWARE_VERSION,
     ATTR_IP_ADDRESS,
+    ATTR_RESOLUTION_APPLIES,
+    ATTR_RESOLUTION_FPS,
+    ATTR_RESOLUTION_HEIGHT,
+    ATTR_RESOLUTION_WIDTH,
     ATTR_SOURCE_DEVICE_ID,
     ATTR_SOURCE_DEVICE_NAME,
     ATTR_STREAM_ADDRESS,
@@ -28,6 +33,12 @@ from .const import (
     ATTR_STREAM_STATE,
     ATTR_STREAM_TYPE,
     ATTR_TEMPERATURE,
+    DEFAULT_DISPLAY_MODE,
+    DISPLAY_MODE_FASTSWITCH,
+    DISPLAY_MODE_FASTSWITCH_CROP,
+    DISPLAY_MODE_FASTSWITCH_STRETCH,
+    DISPLAY_MODE_GENLOCK,
+    DISPLAY_MODE_GENLOCK_SCALING,
     DOMAIN,
     STREAM_TYPE_HDMI,
     STREAM_TYPE_HDMI_AUDIO,
@@ -56,6 +67,7 @@ async def async_setup_entry(
             RiverLinkReceiverAudioSourceSensor(coordinator, device_id),
             RiverLinkReceiverIPAddressSensor(coordinator, device_id),
             RiverLinkReceiverFirmwareSensor(coordinator, device_id),
+            RiverLinkVideoModeStatusSensor(coordinator, device_id),
         ])
     
     # Create entities for all transmitters
@@ -78,6 +90,8 @@ class RiverLinkReceiverTemperatureSensor(RiverLinkEntity, SensorEntity):
     _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_suggested_display_precision = 0
+    _attr_translation_key = "temperature"
+    _attr_has_entity_name = True
 
     def __init__(
         self,
@@ -86,12 +100,7 @@ class RiverLinkReceiverTemperatureSensor(RiverLinkEntity, SensorEntity):
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator, device_id)
-        device = coordinator.data["receivers"][device_id]
-        device_name = device[ATTR_DEVICE_NAME]
-        
         self._attr_unique_id = f"{device_id}_temperature"
-        self._attr_name = f"{device_name} Temperature"
-        self.entity_id = f"sensor.riverlink_{device_name.lower().replace(' ', '_').replace('-', '_')}_temperature"
 
     @property
     def native_value(self) -> float | None:
@@ -120,6 +129,8 @@ class RiverLinkReceiverVideoSourceSensor(RiverLinkEntity, SensorEntity):
     """Video source sensor for receiver."""
 
     _attr_icon = "mdi:video-input-hdmi"
+    _attr_translation_key = "video_source"
+    _attr_has_entity_name = True
 
     def __init__(
         self,
@@ -128,12 +139,7 @@ class RiverLinkReceiverVideoSourceSensor(RiverLinkEntity, SensorEntity):
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator, device_id)
-        device = coordinator.data["receivers"][device_id]
-        device_name = device[ATTR_DEVICE_NAME]
-        
         self._attr_unique_id = f"{device_id}_video_source"
-        self._attr_name = f"{device_name} Video Source"
-        self.entity_id = f"sensor.riverlink_{device_name.lower().replace(' ', '_').replace('-', '_')}_video_source"
 
     @property
     def native_value(self) -> str | None:
@@ -175,6 +181,8 @@ class RiverLinkReceiverAudioSourceSensor(RiverLinkEntity, SensorEntity):
     """Audio source sensor for receiver."""
 
     _attr_icon = "mdi:volume-high"
+    _attr_translation_key = "audio_source"
+    _attr_has_entity_name = True
 
     def __init__(
         self,
@@ -183,12 +191,7 @@ class RiverLinkReceiverAudioSourceSensor(RiverLinkEntity, SensorEntity):
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator, device_id)
-        device = coordinator.data["receivers"][device_id]
-        device_name = device[ATTR_DEVICE_NAME]
-        
         self._attr_unique_id = f"{device_id}_audio_source"
-        self._attr_name = f"{device_name} Audio Source"
-        self.entity_id = f"sensor.riverlink_{device_name.lower().replace(' ', '_').replace('-', '_')}_audio_source"
 
     @property
     def native_value(self) -> str | None:
@@ -231,6 +234,8 @@ class RiverLinkReceiverIPAddressSensor(RiverLinkEntity, SensorEntity):
 
     _attr_icon = "mdi:ip-network"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_translation_key = "ip_address"
+    _attr_has_entity_name = True
 
     def __init__(
         self,
@@ -239,12 +244,7 @@ class RiverLinkReceiverIPAddressSensor(RiverLinkEntity, SensorEntity):
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator, device_id)
-        device = coordinator.data["receivers"][device_id]
-        device_name = device[ATTR_DEVICE_NAME]
-        
         self._attr_unique_id = f"{device_id}_ip_address"
-        self._attr_name = f"{device_name} IP Address"
-        self.entity_id = f"sensor.riverlink_{device_name.lower().replace(' ', '_').replace('-', '_')}_ip_address"
 
     @property
     def native_value(self) -> str | None:
@@ -260,6 +260,8 @@ class RiverLinkReceiverFirmwareSensor(RiverLinkEntity, SensorEntity):
 
     _attr_icon = "mdi:chip"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_translation_key = "firmware_version"
+    _attr_has_entity_name = True
 
     def __init__(
         self,
@@ -268,12 +270,7 @@ class RiverLinkReceiverFirmwareSensor(RiverLinkEntity, SensorEntity):
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator, device_id)
-        device = coordinator.data["receivers"][device_id]
-        device_name = device[ATTR_DEVICE_NAME]
-        
         self._attr_unique_id = f"{device_id}_firmware"
-        self._attr_name = f"{device_name} Firmware"
-        self.entity_id = f"sensor.riverlink_{device_name.lower().replace(' ', '_').replace('-', '_')}_firmware"
 
     @property
     def native_value(self) -> str | None:
@@ -294,6 +291,8 @@ class RiverLinkTransmitterTemperatureSensor(RiverLinkEntity, SensorEntity):
     _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_suggested_display_precision = 0
+    _attr_translation_key = "temperature"
+    _attr_has_entity_name = True
 
     def __init__(
         self,
@@ -302,12 +301,7 @@ class RiverLinkTransmitterTemperatureSensor(RiverLinkEntity, SensorEntity):
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator, device_id)
-        device = coordinator.data["transmitters"][device_id]
-        device_name = device[ATTR_DEVICE_NAME]
-        
         self._attr_unique_id = f"{device_id}_temperature"
-        self._attr_name = f"{device_name} Temperature"
-        self.entity_id = f"sensor.riverlink_{device_name.lower().replace(' ', '_').replace('-', '_')}_temperature"
 
     @property
     def native_value(self) -> float | None:
@@ -443,6 +437,8 @@ class RiverLinkTransmitterIPAddressSensor(RiverLinkEntity, SensorEntity):
 
     _attr_icon = "mdi:ip-network"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_translation_key = "ip_address"
+    _attr_has_entity_name = True
 
     def __init__(
         self,
@@ -451,12 +447,7 @@ class RiverLinkTransmitterIPAddressSensor(RiverLinkEntity, SensorEntity):
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator, device_id)
-        device = coordinator.data["transmitters"][device_id]
-        device_name = device[ATTR_DEVICE_NAME]
-        
         self._attr_unique_id = f"{device_id}_ip_address"
-        self._attr_name = f"{device_name} IP Address"
-        self.entity_id = f"sensor.riverlink_{device_name.lower().replace(' ', '_').replace('-', '_')}_ip_address"
 
     @property
     def native_value(self) -> str | None:
@@ -472,6 +463,8 @@ class RiverLinkTransmitterFirmwareSensor(RiverLinkEntity, SensorEntity):
 
     _attr_icon = "mdi:chip"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_translation_key = "firmware_version"
+    _attr_has_entity_name = True
 
     def __init__(
         self,
@@ -480,12 +473,7 @@ class RiverLinkTransmitterFirmwareSensor(RiverLinkEntity, SensorEntity):
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator, device_id)
-        device = coordinator.data["transmitters"][device_id]
-        device_name = device[ATTR_DEVICE_NAME]
-        
         self._attr_unique_id = f"{device_id}_firmware"
-        self._attr_name = f"{device_name} Firmware"
-        self.entity_id = f"sensor.riverlink_{device_name.lower().replace(' ', '_').replace('-', '_')}_firmware"
 
     @property
     def native_value(self) -> str | None:
@@ -494,3 +482,52 @@ class RiverLinkTransmitterFirmwareSensor(RiverLinkEntity, SensorEntity):
         if transmitter:
             return transmitter.get(ATTR_FIRMWARE_VERSION)
         return None
+
+
+class RiverLinkVideoModeStatusSensor(RiverLinkEntity, SensorEntity):
+    """Sensor showing current video mode status."""
+    
+    _attr_icon = "mdi:information-outline"
+    _attr_translation_key = "video_mode_status"
+    _attr_has_entity_name = True
+    
+    def __init__(
+        self,
+        coordinator: RiverLinkDataUpdateCoordinator,
+        receiver_id: str,
+    ) -> None:
+        """Initialize video mode status sensor."""
+        super().__init__(coordinator, receiver_id)
+        self._attr_unique_id = f"{receiver_id}_video_mode_status"
+    
+    @property
+    def native_value(self) -> str:
+        """Return the current video mode status code for localization."""
+        receiver = self.coordinator.data["receivers"].get(self._device_id)
+        if not receiver:
+            return STATE_UNKNOWN
+        
+        mode = receiver.get(ATTR_DISPLAY_MODE, DEFAULT_DISPLAY_MODE)
+        applies = receiver.get(ATTR_RESOLUTION_APPLIES, True)
+        
+        # Return status codes that can be localized
+        if mode == DISPLAY_MODE_GENLOCK:
+            return "genlock_active"
+        elif applies:
+            return "active_applied"
+        else:
+            return "stored_pending"
+    
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return extra attributes."""
+        receiver = self.coordinator.data["receivers"].get(self._device_id, {})
+        mode = receiver.get(ATTR_DISPLAY_MODE, DEFAULT_DISPLAY_MODE)
+        
+        return {
+            ATTR_DISPLAY_MODE: mode,
+            ATTR_RESOLUTION_WIDTH: receiver.get(ATTR_RESOLUTION_WIDTH, 0),
+            ATTR_RESOLUTION_HEIGHT: receiver.get(ATTR_RESOLUTION_HEIGHT, 0),
+            ATTR_RESOLUTION_FPS: receiver.get(ATTR_RESOLUTION_FPS, 0),
+            ATTR_RESOLUTION_APPLIES: receiver.get(ATTR_RESOLUTION_APPLIES, True),
+        }

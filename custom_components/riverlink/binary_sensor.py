@@ -57,6 +57,8 @@ class RiverLinkReceiverOnlineSensor(RiverLinkEntity, BinarySensorEntity):
     """Online/offline status for receiver."""
 
     _attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
+    _attr_translation_key = "online"
+    _attr_has_entity_name = True
 
     def __init__(
         self,
@@ -65,12 +67,7 @@ class RiverLinkReceiverOnlineSensor(RiverLinkEntity, BinarySensorEntity):
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator, device_id)
-        device = coordinator.data["receivers"][device_id]
-        device_name = device[ATTR_DEVICE_NAME]
-        
         self._attr_unique_id = f"{device_id}_online"
-        self._attr_name = f"{device_name} Online"
-        self.entity_id = f"binary_sensor.riverlink_{device_name.lower().replace(' ', '_').replace('-', '_')}_online"
 
     @property
     def is_on(self) -> bool:
@@ -86,6 +83,8 @@ class RiverLinkReceiverVideoStreamingSensor(RiverLinkEntity, BinarySensorEntity)
 
     _attr_device_class = BinarySensorDeviceClass.RUNNING
     _attr_icon = "mdi:video"
+    _attr_translation_key = "streaming"
+    _attr_has_entity_name = True
 
     def __init__(
         self,
@@ -94,12 +93,7 @@ class RiverLinkReceiverVideoStreamingSensor(RiverLinkEntity, BinarySensorEntity)
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator, device_id)
-        device = coordinator.data["receivers"][device_id]
-        device_name = device[ATTR_DEVICE_NAME]
-        
         self._attr_unique_id = f"{device_id}_video_streaming"
-        self._attr_name = f"{device_name} Video Streaming"
-        self.entity_id = f"binary_sensor.riverlink_{device_name.lower().replace(' ', '_').replace('-', '_')}_video_streaming"
 
     @property
     def is_on(self) -> bool:
@@ -121,6 +115,8 @@ class RiverLinkReceiverAudioStreamingSensor(RiverLinkEntity, BinarySensorEntity)
 
     _attr_device_class = BinarySensorDeviceClass.RUNNING
     _attr_icon = "mdi:speaker"
+    _attr_translation_key = "streaming"
+    _attr_has_entity_name = True
 
     def __init__(
         self,
@@ -129,12 +125,7 @@ class RiverLinkReceiverAudioStreamingSensor(RiverLinkEntity, BinarySensorEntity)
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator, device_id)
-        device = coordinator.data["receivers"][device_id]
-        device_name = device[ATTR_DEVICE_NAME]
-        
         self._attr_unique_id = f"{device_id}_audio_streaming"
-        self._attr_name = f"{device_name} Audio Streaming"
-        self.entity_id = f"binary_sensor.riverlink_{device_name.lower().replace(' ', '_').replace('-', '_')}_audio_streaming"
 
     @property
     def is_on(self) -> bool:
@@ -155,6 +146,8 @@ class RiverLinkTransmitterOnlineSensor(RiverLinkEntity, BinarySensorEntity):
     """Online/offline status for transmitter."""
 
     _attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
+    _attr_translation_key = "online"
+    _attr_has_entity_name = True
 
     def __init__(
         self,
@@ -163,12 +156,7 @@ class RiverLinkTransmitterOnlineSensor(RiverLinkEntity, BinarySensorEntity):
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator, device_id)
-        device = coordinator.data["transmitters"][device_id]
-        device_name = device[ATTR_DEVICE_NAME]
-        
         self._attr_unique_id = f"{device_id}_online"
-        self._attr_name = f"{device_name} Online"
-        self.entity_id = f"binary_sensor.riverlink_{device_name.lower().replace(' ', '_').replace('-', '_')}_online"
 
     @property
     def is_on(self) -> bool:

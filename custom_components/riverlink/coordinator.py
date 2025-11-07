@@ -11,9 +11,15 @@ from .const import (
     ATTR_ACTIVE,
     ATTR_DEVICE_ID,
     ATTR_DEVICE_NAME,
+    ATTR_DISPLAY_MODE,
     ATTR_FIRMWARE_COMMENT,
     ATTR_FIRMWARE_VERSION,
     ATTR_IP_ADDRESS,
+    ATTR_RESOLUTION_APPLIES,
+    ATTR_RESOLUTION_FPS,
+    ATTR_RESOLUTION_HEIGHT,
+    ATTR_RESOLUTION_PRESET,
+    ATTR_RESOLUTION_WIDTH,
     ATTR_SOURCE_DEVICE_ID,
     ATTR_SOURCE_DEVICE_NAME,
     ATTR_STREAM_ADDRESS,
@@ -22,6 +28,8 @@ from .const import (
     ATTR_STREAM_STATE,
     ATTR_STREAM_TYPE,
     ATTR_TEMPERATURE,
+    DEFAULT_DISPLAY_MODE,
+    DEFAULT_RESOLUTION_PRESET,
     LOGGER,
 )
 
@@ -120,6 +128,13 @@ class RiverLinkDataUpdateCoordinator(DataUpdateCoordinator):
             "firmware_version": identity.get("firmware_version", "unknown"),
             "firmware_comment": identity.get("firmware_comment", ""),
             "subscriptions": [],
+            # Video mode state (default values)
+            ATTR_DISPLAY_MODE: DEFAULT_DISPLAY_MODE,
+            ATTR_RESOLUTION_WIDTH: 1920,
+            ATTR_RESOLUTION_HEIGHT: 1080,
+            ATTR_RESOLUTION_FPS: 60,
+            ATTR_RESOLUTION_PRESET: DEFAULT_RESOLUTION_PRESET,
+            ATTR_RESOLUTION_APPLIES: False,  # Default to stored (genlock mode)
         }
         
         # Parse subscriptions

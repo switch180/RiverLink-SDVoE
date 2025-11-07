@@ -19,5 +19,58 @@
     "abort": {
       "already_configured": "This SDVoE API server is already configured."
     }
+  },
+  "entity": {
+    "select": {
+      "video_source": {
+        "name": "Video source"
+      },
+      "display_mode": {
+        "name": "Display mode",
+        "state": {
+          "genlock": "Genlock (Passthrough)",
+          "genlock_scaling": "Genlock Scaling (Low Latency)",
+          "fastswitch": "Fast Switch (Keep Aspect)",
+          "fastswitch_stretch": "Fast Switch (Stretch)",
+          "fastswitch_crop": "Fast Switch (Crop)"
+        }
+      },
+      "resolution_preset": {
+        "name": "Resolution preset"
+      }
+    },
+    "sensor": {
+      "temperature": {
+        "name": "Temperature"
+      },
+      "ip_address": {
+        "name": "IP address"
+      },
+      "firmware_version": {
+        "name": "Firmware version"
+      },
+      "video_source": {
+        "name": "Video source"
+      },
+      "audio_source": {
+        "name": "Audio source"
+      },
+      "video_mode_status": {
+        "name": "Video mode status",
+        "state": {
+          "genlock_active": "Genlock active (passthrough)",
+          "active_applied": "Active (applied)",
+          "stored_pending": "Stored (switch from genlock to apply)"
+        }
+      }
+    },
+    "binary_sensor": {
+      "online": {
+        "name": "Online"
+      },
+      "streaming": {
+        "name": "Streaming"
+      }
+    }
   }
 }

@@ -56,3 +56,52 @@ STREAM_TYPE_MULTICH_AUDIO = "MULTICH_AUDIO"
 # Stream/Subscription states
 STATE_STREAMING = "STREAMING"
 STATE_STOPPED = "STOPPED"
+
+# Display mode constants (for video output control)
+DISPLAY_MODE_GENLOCK = "genlock"
+DISPLAY_MODE_GENLOCK_SCALING = "genlock_scaling"
+DISPLAY_MODE_FASTSWITCH = "fastswitch"
+DISPLAY_MODE_FASTSWITCH_STRETCH = "fastswitch_stretch"
+DISPLAY_MODE_FASTSWITCH_CROP = "fastswitch_crop"
+
+# Resolution presets: name → (width, height, fps)
+RESOLUTION_PRESETS = {
+    # Broadcast/Consumer formats (17 options)
+    "720p @ 60Hz": (1280, 720, 60),
+    "720p @ 50Hz": (1280, 720, 50),
+    "1080p @ 60Hz": (1920, 1080, 60),
+    "1080p @ 50Hz": (1920, 1080, 50),
+    "1080p @ 30Hz": (1920, 1080, 30),
+    "1080p @ 25Hz": (1920, 1080, 25),
+    "1080p @ 24Hz": (1920, 1080, 24),
+    "4K UHD @ 60Hz": (3840, 2160, 60),
+    "4K UHD @ 50Hz": (3840, 2160, 50),
+    "4K UHD @ 30Hz": (3840, 2160, 30),
+    "4K UHD @ 25Hz": (3840, 2160, 25),
+    "4K UHD @ 24Hz": (3840, 2160, 24),
+    "4K Cinema @ 60Hz": (4096, 2160, 60),
+    "4K Cinema @ 30Hz": (4096, 2160, 30),
+    "4K Cinema @ 24Hz": (4096, 2160, 24),
+    # Computer/Monitor formats (9 options)
+    "1024×768 @ 60Hz": (1024, 768, 60),
+    "1280×768 @ 60Hz": (1280, 768, 60),
+    "1280×960 @ 60Hz": (1280, 960, 60),
+    "1280×1024 @ 60Hz": (1280, 1024, 60),
+    "1360×768 @ 60Hz": (1360, 768, 60),
+    "1400×1050 @ 60Hz": (1400, 1050, 60),
+    "1600×1200 @ 60Hz": (1600, 1200, 60),
+    "1680×1050 @ 60Hz": (1680, 1050, 60),
+    "1920×1200 @ 60Hz": (1920, 1200, 60),
+}
+
+# Default values for video mode
+DEFAULT_DISPLAY_MODE = DISPLAY_MODE_GENLOCK
+DEFAULT_RESOLUTION_PRESET = "1080p @ 60Hz"
+
+# Attribute keys for video mode
+ATTR_DISPLAY_MODE = "display_mode"
+ATTR_RESOLUTION_WIDTH = "resolution_width"
+ATTR_RESOLUTION_HEIGHT = "resolution_height"
+ATTR_RESOLUTION_FPS = "resolution_fps"
+ATTR_RESOLUTION_PRESET = "resolution_preset"
+ATTR_RESOLUTION_APPLIES = "resolution_applies"

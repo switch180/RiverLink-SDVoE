@@ -343,3 +343,80 @@ class RiverLinkApiClient:
             raise RiverLinkApiClientError(msg)
         
         return response
+
+    async def async_set_video_mode(
+        self,
+        device_id: str,
+        mode: str,
+        width: int | None = None,
+        height: int | None = None,
+        fps: int | None = None,
+    ) -> dict[str, Any]:
+        """
+        Set video output mode and optional resolution.
+        
+        Args:
+            device_id: Device ID (receiver)
+            mode: Display mode - one of:
+                - "genlock" (no resolution needed)
+                - "genlock_scaling" (requires resolution)
+                - "fastswitch" (requires resolution, keep aspect)
+                - "fastswitch_stretch" (requires resolution)
+                - "fastswitch_crop" (requires resolution)
+            width: Video width in pixels (required except for genlock)
+            height: Video height in pixels (required except for genlock)
+            fps: Frame rate (required except for genlock)
+        
+        Returns:
+            API response dict
+        
+        Raises:
+            ValueError: If resolution params missing for modes that need them
+            RiverLinkApiClientError: If API call fails
+        """
+        if not self.is_connected:
+            await self.connect()
+        
+        # Build command based on mode
+        if mode == "genlock":
+            # Genlock doesn't need resolution
+            command = f"set {device_id} video genlock"
+        
+        elif mode == "genlock_scaling":
+            # Genlock scaling requires resolution
+            if width is None or height is None or fps is None:
+                raise ValueError("genlock_scaling requires width, height, and fps")
+            command = f"set {device_id} video genlock_scaling size {width} {height} fps {fps}"
+        
+        elif mode == "fastswitch":
+            # Fast switch (keep aspect) requires resolution
+            if width is None or height is None or fps is None:
+                raise ValueError("fastswitch requires width, height, and fps")
+            command = f"set {device_id} video fastswitch size {width} {height} fps {fps}"
+        
+        elif mode == "fastswitch_stretch":
+            # Fast switch stretch requires resolution
+            if width is None or height is None or fps is None:
+                raise ValueError("fastswitch_stretch requires width, height, and fps")
+            command = f"set {device_id} video fastswitch stretch size {width} {height} fps {fps}"
+        
+        elif mode == "fastswitch_crop":
+            # Fast switch crop requires resolution
+            if width is None or height is None or fps is None:
+                raise ValueError("fastswitch_crop requires width, height, and fps")
+            command = f"set {device_id} video fastswitch crop size {width} {height} fps {fps}"
+        
+        else:
+            raise ValueError(f"Unknown video mode: {mode}")
+        
+        LOGGER.info("Setting video mode for %s: %s", device_id, command)
+        
+        # Send command
+        response = await self._send_command(command)
+        
+        if response.get("status") != "SUCCESS":
+            error = response.get("error", {})
+            msg = f"Failed to set video mode: {error.get('message', 'Unknown error')}"
+            raise RiverLinkApiClientError(msg)
+        
+        return response
