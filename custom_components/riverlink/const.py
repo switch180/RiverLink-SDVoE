@@ -108,6 +108,15 @@ ATTR_RESOLUTION_APPLIES = "resolution_applies"
 ATTR_PENDING_RESOLUTION_PRESET = "pending_resolution_preset"
 ATTR_RESOLUTION_PRESET_STATUS = "resolution_preset_status"
 
+# Video signal attributes (from HDMI_ENCODER/HDMI_DECODER status)
+ATTR_VIDEO_SIGNAL_COLOR_SPACE = "video_signal_color_space"
+ATTR_VIDEO_SIGNAL_BITS_PER_PIXEL = "video_signal_bits_per_pixel"
+ATTR_VIDEO_SIGNAL_SCAN_MODE = "video_signal_scan_mode"
+
+# HDCP attributes (available on both HDMI_ENCODER and HDMI_DECODER)
+ATTR_HDCP_PROTECTED = "hdcp_protected"
+ATTR_HDCP_VERSION = "hdcp_version"
+
 # Resolution preset status values
 PRESET_STATUS_PENDING = "pending"    # Pending preset in genlock mode
 PRESET_STATUS_APPLIED = "applied"    # Resolution is applied to device

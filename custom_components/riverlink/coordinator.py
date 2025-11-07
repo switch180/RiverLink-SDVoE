@@ -14,6 +14,8 @@ from .const import (
     ATTR_DISPLAY_MODE,
     ATTR_FIRMWARE_COMMENT,
     ATTR_FIRMWARE_VERSION,
+    ATTR_HDCP_PROTECTED,
+    ATTR_HDCP_VERSION,
     ATTR_IP_ADDRESS,
     ATTR_PENDING_RESOLUTION_PRESET,
     ATTR_RESOLUTION_APPLIES,
@@ -29,6 +31,9 @@ from .const import (
     ATTR_STREAM_STATE,
     ATTR_STREAM_TYPE,
     ATTR_TEMPERATURE,
+    ATTR_VIDEO_SIGNAL_BITS_PER_PIXEL,
+    ATTR_VIDEO_SIGNAL_COLOR_SPACE,
+    ATTR_VIDEO_SIGNAL_SCAN_MODE,
     DEFAULT_DISPLAY_MODE,
     DEFAULT_RESOLUTION_PRESET,
     DISPLAY_MODE_FASTSWITCH,
@@ -199,6 +204,47 @@ class RiverLinkDataUpdateCoordinator(DataUpdateCoordinator):
         
         return "Custom"
     
+    def _extract_video_signal(self, device: dict[str, Any], node_type: str = "HDMI_ENCODER") -> dict[str, Any]:
+        """
+        Extract video signal and HDCP information from specified node type.
+        
+        Args:
+            device: Device data
+            node_type: "HDMI_ENCODER" for output (receivers) or "HDMI_DECODER" for input (transmitters)
+        
+        Returns dict with: width, height, fps, color_space, bits_per_pixel, scan_mode, hdcp_protected, hdcp_version
+        """
+        nodes = device.get("nodes", [])
+        
+        # Find specified node type (index 0)
+        for node in nodes:
+            if node.get("type") == node_type and node.get("index") == 0:
+                status = node.get("status", {})
+                video = status.get("video", {})
+                
+                return {
+                    "width": video.get("width"),
+                    "height": video.get("height"),
+                    "fps": video.get("frames_per_second"),
+                    ATTR_VIDEO_SIGNAL_COLOR_SPACE: video.get("color_space"),
+                    ATTR_VIDEO_SIGNAL_BITS_PER_PIXEL: video.get("bits_per_pixel"),
+                    ATTR_VIDEO_SIGNAL_SCAN_MODE: video.get("scan_mode"),
+                    ATTR_HDCP_PROTECTED: status.get(ATTR_HDCP_PROTECTED),
+                    ATTR_HDCP_VERSION: status.get(ATTR_HDCP_VERSION),
+                }
+        
+        # Return empty if node not found
+        return {
+            "width": None,
+            "height": None,
+            "fps": None,
+            ATTR_VIDEO_SIGNAL_COLOR_SPACE: None,
+            ATTR_VIDEO_SIGNAL_BITS_PER_PIXEL: None,
+            ATTR_VIDEO_SIGNAL_SCAN_MODE: None,
+            ATTR_HDCP_PROTECTED: None,
+            ATTR_HDCP_VERSION: None,
+        }
+    
     def _parse_receiver(
         self,
         device: dict[str, Any],
@@ -228,6 +274,9 @@ class RiverLinkDataUpdateCoordinator(DataUpdateCoordinator):
         old_receiver = (self.data or {}).get("receivers", {}).get(device_id, {}) if hasattr(self, 'data') else {}
         pending_preset = old_receiver.get(ATTR_PENDING_RESOLUTION_PRESET)
         
+        # Extract video signal information from HDMI_ENCODER status
+        video_signal = self._extract_video_signal(device)
+        
         # Extract basic device info
         device_data = {
             "device_id": device_id,
@@ -246,6 +295,12 @@ class RiverLinkDataUpdateCoordinator(DataUpdateCoordinator):
             ATTR_RESOLUTION_PRESET: preset,
             ATTR_RESOLUTION_APPLIES: applies,
             ATTR_PENDING_RESOLUTION_PRESET: pending_preset,
+            # Video signal information (from HDMI_ENCODER status)
+            ATTR_VIDEO_SIGNAL_COLOR_SPACE: video_signal.get("color_space"),
+            ATTR_VIDEO_SIGNAL_BITS_PER_PIXEL: video_signal.get("bits_per_pixel"),
+            ATTR_VIDEO_SIGNAL_SCAN_MODE: video_signal.get("scan_mode"),
+            ATTR_HDCP_PROTECTED: video_signal.get(ATTR_HDCP_PROTECTED),
+            ATTR_HDCP_VERSION: video_signal.get(ATTR_HDCP_VERSION),
         }
         
         # Parse subscriptions
@@ -284,6 +339,9 @@ class RiverLinkDataUpdateCoordinator(DataUpdateCoordinator):
         config = device.get("configuration", {})
         status = device.get("status", {})
         
+        # Extract input signal information from HDMI_DECODER status
+        input_signal = self._extract_video_signal(device, "HDMI_DECODER")
+        
         # Extract basic device info
         device_data = {
             "device_id": device_id,
@@ -294,6 +352,15 @@ class RiverLinkDataUpdateCoordinator(DataUpdateCoordinator):
             "firmware_version": identity.get("firmware_version", "unknown"),
             "firmware_comment": identity.get("firmware_comment", ""),
             "streams": [],
+            # Input signal information (from HDMI_DECODER status)
+            ATTR_RESOLUTION_WIDTH: input_signal.get("width"),
+            ATTR_RESOLUTION_HEIGHT: input_signal.get("height"),
+            ATTR_RESOLUTION_FPS: input_signal.get("fps"),
+            ATTR_VIDEO_SIGNAL_COLOR_SPACE: input_signal.get("color_space"),
+            ATTR_VIDEO_SIGNAL_BITS_PER_PIXEL: input_signal.get("bits_per_pixel"),
+            ATTR_VIDEO_SIGNAL_SCAN_MODE: input_signal.get("scan_mode"),
+            ATTR_HDCP_PROTECTED: input_signal.get(ATTR_HDCP_PROTECTED),
+            ATTR_HDCP_VERSION: input_signal.get(ATTR_HDCP_VERSION),
         }
         
         # Parse streams

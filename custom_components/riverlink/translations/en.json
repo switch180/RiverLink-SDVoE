@@ -55,13 +55,11 @@
       "audio_source": {
         "name": "Audio source"
       },
-      "video_mode_status": {
-        "name": "Video mode status",
-        "state": {
-          "genlock_active": "Genlock active (passthrough)",
-          "active_applied": "Active (applied)",
-          "stored_pending": "Stored (switch from genlock to apply)"
-        }
+      "video_signal": {
+        "name": "Video signal"
+      },
+      "input_signal": {
+        "name": "Input signal"
       }
     },
     "binary_sensor": {

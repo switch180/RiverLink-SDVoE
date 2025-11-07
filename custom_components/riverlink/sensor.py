@@ -20,6 +20,8 @@ from .const import (
     ATTR_DEVICE_NAME,
     ATTR_DISPLAY_MODE,
     ATTR_FIRMWARE_VERSION,
+    ATTR_HDCP_PROTECTED,
+    ATTR_HDCP_VERSION,
     ATTR_IP_ADDRESS,
     ATTR_RESOLUTION_APPLIES,
     ATTR_RESOLUTION_FPS,
@@ -33,6 +35,9 @@ from .const import (
     ATTR_STREAM_STATE,
     ATTR_STREAM_TYPE,
     ATTR_TEMPERATURE,
+    ATTR_VIDEO_SIGNAL_BITS_PER_PIXEL,
+    ATTR_VIDEO_SIGNAL_COLOR_SPACE,
+    ATTR_VIDEO_SIGNAL_SCAN_MODE,
     DEFAULT_DISPLAY_MODE,
     DISPLAY_MODE_FASTSWITCH,
     DISPLAY_MODE_FASTSWITCH_CROP,
@@ -65,6 +70,7 @@ async def async_setup_entry(
             RiverLinkReceiverTemperatureSensor(coordinator, device_id),
             RiverLinkReceiverVideoSourceSensor(coordinator, device_id),
             RiverLinkReceiverAudioSourceSensor(coordinator, device_id),
+            RiverLinkReceiverVideoSignalSensor(coordinator, device_id),
             RiverLinkReceiverIPAddressSensor(coordinator, device_id),
             RiverLinkReceiverFirmwareSensor(coordinator, device_id),
         ])
@@ -75,6 +81,7 @@ async def async_setup_entry(
             RiverLinkTransmitterTemperatureSensor(coordinator, device_id),
             RiverLinkTransmitterHDMIStreamSensor(coordinator, device_id),
             RiverLinkTransmitterAudioStreamSensor(coordinator, device_id),
+            RiverLinkTransmitterInputSignalSensor(coordinator, device_id),
             RiverLinkTransmitterIPAddressSensor(coordinator, device_id),
             RiverLinkTransmitterFirmwareSensor(coordinator, device_id),
         ])
@@ -226,6 +233,54 @@ class RiverLinkReceiverAudioSourceSensor(RiverLinkEntity, SensorEntity):
                 }
         
         return {}
+
+
+class RiverLinkReceiverVideoSignalSensor(RiverLinkEntity, SensorEntity):
+    """Video signal information sensor for receiver."""
+
+    _attr_icon = "mdi:video-box"
+    _attr_translation_key = "video_signal"
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        coordinator: RiverLinkDataUpdateCoordinator,
+        device_id: str,
+    ) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator, device_id)
+        self._attr_unique_id = f"{device_id}_video_signal"
+
+    @property
+    def native_value(self) -> str | None:
+        """Return formatted video signal with color space."""
+        receiver = self.coordinator.data["receivers"].get(self._device_id)
+        if not receiver:
+            return None
+        
+        width = receiver.get(ATTR_RESOLUTION_WIDTH, 0)
+        height = receiver.get(ATTR_RESOLUTION_HEIGHT, 0)
+        fps = receiver.get(ATTR_RESOLUTION_FPS, 0)
+        color_space = receiver.get(ATTR_VIDEO_SIGNAL_COLOR_SPACE, '')
+        bpp = receiver.get(ATTR_VIDEO_SIGNAL_BITS_PER_PIXEL, 0)
+        
+        return f"{width}×{height} @ {fps}Hz, {color_space} {bpp}-bit"
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        """Return video signal and HDCP attributes."""
+        receiver = self.coordinator.data["receivers"].get(self._device_id, {})
+        
+        return {
+            ATTR_RESOLUTION_WIDTH: receiver.get(ATTR_RESOLUTION_WIDTH),
+            ATTR_RESOLUTION_HEIGHT: receiver.get(ATTR_RESOLUTION_HEIGHT),
+            ATTR_RESOLUTION_FPS: receiver.get(ATTR_RESOLUTION_FPS),
+            ATTR_VIDEO_SIGNAL_COLOR_SPACE: receiver.get(ATTR_VIDEO_SIGNAL_COLOR_SPACE),
+            ATTR_VIDEO_SIGNAL_BITS_PER_PIXEL: receiver.get(ATTR_VIDEO_SIGNAL_BITS_PER_PIXEL),
+            ATTR_VIDEO_SIGNAL_SCAN_MODE: receiver.get(ATTR_VIDEO_SIGNAL_SCAN_MODE),
+            ATTR_HDCP_PROTECTED: receiver.get(ATTR_HDCP_PROTECTED),
+            ATTR_HDCP_VERSION: receiver.get(ATTR_HDCP_VERSION),
+        }
 
 
 class RiverLinkReceiverIPAddressSensor(RiverLinkEntity, SensorEntity):
@@ -429,6 +484,54 @@ class RiverLinkTransmitterAudioStreamSensor(RiverLinkEntity, SensorEntity):
                 }
         
         return {}
+
+
+class RiverLinkTransmitterInputSignalSensor(RiverLinkEntity, SensorEntity):
+    """Input signal information sensor for transmitter."""
+
+    _attr_icon = "mdi:video-input-hdmi"
+    _attr_translation_key = "input_signal"
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        coordinator: RiverLinkDataUpdateCoordinator,
+        device_id: str,
+    ) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator, device_id)
+        self._attr_unique_id = f"{device_id}_input_signal"
+
+    @property
+    def native_value(self) -> str | None:
+        """Return formatted input signal with color space."""
+        transmitter = self.coordinator.data["transmitters"].get(self._device_id)
+        if not transmitter:
+            return None
+        
+        width = transmitter.get(ATTR_RESOLUTION_WIDTH, 0)
+        height = transmitter.get(ATTR_RESOLUTION_HEIGHT, 0)
+        fps = transmitter.get(ATTR_RESOLUTION_FPS, 0)
+        color_space = transmitter.get(ATTR_VIDEO_SIGNAL_COLOR_SPACE, '')
+        bpp = transmitter.get(ATTR_VIDEO_SIGNAL_BITS_PER_PIXEL, 0)
+        
+        return f"{width}×{height} @ {fps}Hz, {color_space} {bpp}-bit"
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        """Return input signal and HDCP attributes."""
+        transmitter = self.coordinator.data["transmitters"].get(self._device_id, {})
+        
+        return {
+            ATTR_RESOLUTION_WIDTH: transmitter.get(ATTR_RESOLUTION_WIDTH),
+            ATTR_RESOLUTION_HEIGHT: transmitter.get(ATTR_RESOLUTION_HEIGHT),
+            ATTR_RESOLUTION_FPS: transmitter.get(ATTR_RESOLUTION_FPS),
+            ATTR_VIDEO_SIGNAL_COLOR_SPACE: transmitter.get(ATTR_VIDEO_SIGNAL_COLOR_SPACE),
+            ATTR_VIDEO_SIGNAL_BITS_PER_PIXEL: transmitter.get(ATTR_VIDEO_SIGNAL_BITS_PER_PIXEL),
+            ATTR_VIDEO_SIGNAL_SCAN_MODE: transmitter.get(ATTR_VIDEO_SIGNAL_SCAN_MODE),
+            ATTR_HDCP_PROTECTED: transmitter.get(ATTR_HDCP_PROTECTED),
+            ATTR_HDCP_VERSION: transmitter.get(ATTR_HDCP_VERSION),
+        }
 
 
 class RiverLinkTransmitterIPAddressSensor(RiverLinkEntity, SensorEntity):
