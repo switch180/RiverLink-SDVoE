@@ -42,14 +42,14 @@ async def async_setup_entry(
         name=DOMAIN,
         update_interval=timedelta(seconds=DEFAULT_SCAN_INTERVAL),
     )
-    
+
     # Create API client
     client = RiverLinkApiClient(
         host=entry.data[CONF_HOST],
         port=entry.data[CONF_PORT],
         api_version=entry.data[CONF_API_VERSION],
     )
-    
+
     entry.runtime_data = RiverLinkData(
         client=client,
         integration=async_get_loaded_integration(hass, entry.domain),

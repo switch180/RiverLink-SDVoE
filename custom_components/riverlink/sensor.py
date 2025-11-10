@@ -2,28 +2,22 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
-    SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.const import EntityCategory, STATE_UNKNOWN, UnitOfTemperature
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.const import EntityCategory, UnitOfTemperature
 
 from .const import (
-    ATTR_ACTIVE,
     ATTR_DEVICE_ID,
     ATTR_DEVICE_NAME,
-    ATTR_DISPLAY_MODE,
     ATTR_FIRMWARE_VERSION,
     ATTR_HDCP_PROTECTED,
     ATTR_HDCP_VERSION,
     ATTR_IP_ADDRESS,
-    ATTR_RESOLUTION_APPLIES,
     ATTR_RESOLUTION_FPS,
     ATTR_RESOLUTION_HEIGHT,
     ATTR_RESOLUTION_WIDTH,
@@ -38,54 +32,54 @@ from .const import (
     ATTR_VIDEO_SIGNAL_BITS_PER_PIXEL,
     ATTR_VIDEO_SIGNAL_COLOR_SPACE,
     ATTR_VIDEO_SIGNAL_SCAN_MODE,
-    DEFAULT_DISPLAY_MODE,
-    DISPLAY_MODE_FASTSWITCH,
-    DISPLAY_MODE_FASTSWITCH_CROP,
-    DISPLAY_MODE_FASTSWITCH_STRETCH,
-    DISPLAY_MODE_GENLOCK,
-    DISPLAY_MODE_GENLOCK_SCALING,
-    DOMAIN,
     STREAM_TYPE_HDMI,
     STREAM_TYPE_HDMI_AUDIO,
 )
 from .entity import RiverLinkEntity
 
 if TYPE_CHECKING:
+    from homeassistant.core import HomeAssistant
+    from homeassistant.helpers.entity_platform import AddEntitiesCallback
+
     from .coordinator import RiverLinkDataUpdateCoordinator
     from .data import RiverLinkConfigEntry
 
 
 async def async_setup_entry(
-    hass: HomeAssistant,
+    _hass: HomeAssistant,
     entry: RiverLinkConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up sensor platform."""
     coordinator = entry.runtime_data.coordinator
     entities: list[SensorEntity] = []
-    
+
     # Create entities for all receivers
     for device_id in coordinator.data.get("receivers", {}):
-        entities.extend([
-            RiverLinkReceiverTemperatureSensor(coordinator, device_id),
-            RiverLinkReceiverVideoSourceSensor(coordinator, device_id),
-            RiverLinkReceiverAudioSourceSensor(coordinator, device_id),
-            RiverLinkReceiverVideoSignalSensor(coordinator, device_id),
-            RiverLinkReceiverIPAddressSensor(coordinator, device_id),
-            RiverLinkReceiverFirmwareSensor(coordinator, device_id),
-        ])
-    
+        entities.extend(
+            [
+                RiverLinkReceiverTemperatureSensor(coordinator, device_id),
+                RiverLinkReceiverVideoSourceSensor(coordinator, device_id),
+                RiverLinkReceiverAudioSourceSensor(coordinator, device_id),
+                RiverLinkReceiverVideoSignalSensor(coordinator, device_id),
+                RiverLinkReceiverIPAddressSensor(coordinator, device_id),
+                RiverLinkReceiverFirmwareSensor(coordinator, device_id),
+            ]
+        )
+
     # Create entities for all transmitters
     for device_id in coordinator.data.get("transmitters", {}):
-        entities.extend([
-            RiverLinkTransmitterTemperatureSensor(coordinator, device_id),
-            RiverLinkTransmitterHDMIStreamSensor(coordinator, device_id),
-            RiverLinkTransmitterAudioStreamSensor(coordinator, device_id),
-            RiverLinkTransmitterInputSignalSensor(coordinator, device_id),
-            RiverLinkTransmitterIPAddressSensor(coordinator, device_id),
-            RiverLinkTransmitterFirmwareSensor(coordinator, device_id),
-        ])
-    
+        entities.extend(
+            [
+                RiverLinkTransmitterTemperatureSensor(coordinator, device_id),
+                RiverLinkTransmitterHDMIStreamSensor(coordinator, device_id),
+                RiverLinkTransmitterAudioStreamSensor(coordinator, device_id),
+                RiverLinkTransmitterInputSignalSensor(coordinator, device_id),
+                RiverLinkTransmitterIPAddressSensor(coordinator, device_id),
+                RiverLinkTransmitterFirmwareSensor(coordinator, device_id),
+            ]
+        )
+
     async_add_entities(entities)
 
 
@@ -122,7 +116,7 @@ class RiverLinkReceiverTemperatureSensor(RiverLinkEntity, SensorEntity):
         receiver = self.coordinator.data["receivers"].get(self._device_id)
         if not receiver:
             return {}
-        
+
         return {
             ATTR_DEVICE_ID: receiver[ATTR_DEVICE_ID],
             ATTR_DEVICE_NAME: receiver[ATTR_DEVICE_NAME],
@@ -153,12 +147,12 @@ class RiverLinkReceiverVideoSourceSensor(RiverLinkEntity, SensorEntity):
         receiver = self.coordinator.data["receivers"].get(self._device_id)
         if not receiver:
             return None
-        
+
         # Find HDMI subscription
         for sub in receiver.get("subscriptions", []):
             if sub.get(ATTR_STREAM_TYPE) == STREAM_TYPE_HDMI:
                 return sub.get(ATTR_SOURCE_DEVICE_NAME) or "Unknown"
-        
+
         return "No Source"
 
     @property
@@ -167,7 +161,7 @@ class RiverLinkReceiverVideoSourceSensor(RiverLinkEntity, SensorEntity):
         receiver = self.coordinator.data["receivers"].get(self._device_id)
         if not receiver:
             return {}
-        
+
         # Find HDMI subscription
         for sub in receiver.get("subscriptions", []):
             if sub.get(ATTR_STREAM_TYPE) == STREAM_TYPE_HDMI:
@@ -179,7 +173,7 @@ class RiverLinkReceiverVideoSourceSensor(RiverLinkEntity, SensorEntity):
                     ATTR_STREAM_ENABLED: sub.get(ATTR_STREAM_ENABLED),
                     ATTR_STREAM_INDEX: sub.get(ATTR_STREAM_INDEX),
                 }
-        
+
         return {}
 
 
@@ -205,12 +199,12 @@ class RiverLinkReceiverAudioSourceSensor(RiverLinkEntity, SensorEntity):
         receiver = self.coordinator.data["receivers"].get(self._device_id)
         if not receiver:
             return None
-        
+
         # Find HDMI_AUDIO subscription
         for sub in receiver.get("subscriptions", []):
             if sub.get(ATTR_STREAM_TYPE) == STREAM_TYPE_HDMI_AUDIO:
                 return sub.get(ATTR_SOURCE_DEVICE_NAME) or "Unknown"
-        
+
         return "No Source"
 
     @property
@@ -219,7 +213,7 @@ class RiverLinkReceiverAudioSourceSensor(RiverLinkEntity, SensorEntity):
         receiver = self.coordinator.data["receivers"].get(self._device_id)
         if not receiver:
             return {}
-        
+
         # Find HDMI_AUDIO subscription
         for sub in receiver.get("subscriptions", []):
             if sub.get(ATTR_STREAM_TYPE) == STREAM_TYPE_HDMI_AUDIO:
@@ -231,7 +225,7 @@ class RiverLinkReceiverAudioSourceSensor(RiverLinkEntity, SensorEntity):
                     ATTR_STREAM_ENABLED: sub.get(ATTR_STREAM_ENABLED),
                     ATTR_STREAM_INDEX: sub.get(ATTR_STREAM_INDEX),
                 }
-        
+
         return {}
 
 
@@ -257,20 +251,20 @@ class RiverLinkReceiverVideoSignalSensor(RiverLinkEntity, SensorEntity):
         receiver = self.coordinator.data["receivers"].get(self._device_id)
         if not receiver:
             return None
-        
+
         width = receiver.get(ATTR_RESOLUTION_WIDTH, 0)
         height = receiver.get(ATTR_RESOLUTION_HEIGHT, 0)
         fps = receiver.get(ATTR_RESOLUTION_FPS, 0)
-        color_space = receiver.get(ATTR_VIDEO_SIGNAL_COLOR_SPACE, '')
+        color_space = receiver.get(ATTR_VIDEO_SIGNAL_COLOR_SPACE, "")
         bpp = receiver.get(ATTR_VIDEO_SIGNAL_BITS_PER_PIXEL, 0)
-        
+
         return f"{width}×{height} @ {fps}Hz, {color_space} {bpp}-bit"
 
     @property
     def extra_state_attributes(self) -> dict:
         """Return video signal and HDCP attributes."""
         receiver = self.coordinator.data["receivers"].get(self._device_id, {})
-        
+
         return {
             ATTR_RESOLUTION_WIDTH: receiver.get(ATTR_RESOLUTION_WIDTH),
             ATTR_RESOLUTION_HEIGHT: receiver.get(ATTR_RESOLUTION_HEIGHT),
@@ -371,7 +365,7 @@ class RiverLinkTransmitterTemperatureSensor(RiverLinkEntity, SensorEntity):
         transmitter = self.coordinator.data["transmitters"].get(self._device_id)
         if not transmitter:
             return {}
-        
+
         return {
             ATTR_DEVICE_ID: transmitter[ATTR_DEVICE_ID],
             ATTR_DEVICE_NAME: transmitter[ATTR_DEVICE_NAME],
@@ -394,7 +388,7 @@ class RiverLinkTransmitterHDMIStreamSensor(RiverLinkEntity, SensorEntity):
         super().__init__(coordinator, device_id)
         device = coordinator.data["transmitters"][device_id]
         device_name = device[ATTR_DEVICE_NAME]
-        
+
         self._attr_unique_id = f"{device_id}_hdmi_stream"
         self._attr_name = f"{device_name} HDMI Stream"
         self.entity_id = f"sensor.riverlink_{device_name.lower().replace(' ', '_').replace('-', '_')}_hdmi_stream"
@@ -405,12 +399,12 @@ class RiverLinkTransmitterHDMIStreamSensor(RiverLinkEntity, SensorEntity):
         transmitter = self.coordinator.data["transmitters"].get(self._device_id)
         if not transmitter:
             return None
-        
+
         # Find HDMI stream
         for stream in transmitter.get("streams", []):
             if stream.get(ATTR_STREAM_TYPE) == STREAM_TYPE_HDMI:
                 return stream.get(ATTR_STREAM_STATE, "STOPPED")
-        
+
         return "STOPPED"
 
     @property
@@ -419,7 +413,7 @@ class RiverLinkTransmitterHDMIStreamSensor(RiverLinkEntity, SensorEntity):
         transmitter = self.coordinator.data["transmitters"].get(self._device_id)
         if not transmitter:
             return {}
-        
+
         # Find HDMI stream
         for stream in transmitter.get("streams", []):
             if stream.get(ATTR_STREAM_TYPE) == STREAM_TYPE_HDMI:
@@ -429,7 +423,7 @@ class RiverLinkTransmitterHDMIStreamSensor(RiverLinkEntity, SensorEntity):
                     ATTR_STREAM_ADDRESS: stream.get(ATTR_STREAM_ADDRESS),
                     ATTR_STREAM_ENABLED: stream.get(ATTR_STREAM_ENABLED),
                 }
-        
+
         return {}
 
 
@@ -447,7 +441,7 @@ class RiverLinkTransmitterAudioStreamSensor(RiverLinkEntity, SensorEntity):
         super().__init__(coordinator, device_id)
         device = coordinator.data["transmitters"][device_id]
         device_name = device[ATTR_DEVICE_NAME]
-        
+
         self._attr_unique_id = f"{device_id}_audio_stream"
         self._attr_name = f"{device_name} Audio Stream"
         self.entity_id = f"sensor.riverlink_{device_name.lower().replace(' ', '_').replace('-', '_')}_audio_stream"
@@ -458,12 +452,12 @@ class RiverLinkTransmitterAudioStreamSensor(RiverLinkEntity, SensorEntity):
         transmitter = self.coordinator.data["transmitters"].get(self._device_id)
         if not transmitter:
             return None
-        
+
         # Find HDMI_AUDIO stream
         for stream in transmitter.get("streams", []):
             if stream.get(ATTR_STREAM_TYPE) == STREAM_TYPE_HDMI_AUDIO:
                 return stream.get(ATTR_STREAM_STATE, "STOPPED")
-        
+
         return "STOPPED"
 
     @property
@@ -472,7 +466,7 @@ class RiverLinkTransmitterAudioStreamSensor(RiverLinkEntity, SensorEntity):
         transmitter = self.coordinator.data["transmitters"].get(self._device_id)
         if not transmitter:
             return {}
-        
+
         # Find HDMI_AUDIO stream
         for stream in transmitter.get("streams", []):
             if stream.get(ATTR_STREAM_TYPE) == STREAM_TYPE_HDMI_AUDIO:
@@ -482,7 +476,7 @@ class RiverLinkTransmitterAudioStreamSensor(RiverLinkEntity, SensorEntity):
                     ATTR_STREAM_ADDRESS: stream.get(ATTR_STREAM_ADDRESS),
                     ATTR_STREAM_ENABLED: stream.get(ATTR_STREAM_ENABLED),
                 }
-        
+
         return {}
 
 
@@ -508,20 +502,20 @@ class RiverLinkTransmitterInputSignalSensor(RiverLinkEntity, SensorEntity):
         transmitter = self.coordinator.data["transmitters"].get(self._device_id)
         if not transmitter:
             return None
-        
+
         width = transmitter.get(ATTR_RESOLUTION_WIDTH, 0)
         height = transmitter.get(ATTR_RESOLUTION_HEIGHT, 0)
         fps = transmitter.get(ATTR_RESOLUTION_FPS, 0)
-        color_space = transmitter.get(ATTR_VIDEO_SIGNAL_COLOR_SPACE, '')
+        color_space = transmitter.get(ATTR_VIDEO_SIGNAL_COLOR_SPACE, "")
         bpp = transmitter.get(ATTR_VIDEO_SIGNAL_BITS_PER_PIXEL, 0)
-        
+
         return f"{width}×{height} @ {fps}Hz, {color_space} {bpp}-bit"
 
     @property
     def extra_state_attributes(self) -> dict:
         """Return input signal and HDCP attributes."""
         transmitter = self.coordinator.data["transmitters"].get(self._device_id, {})
-        
+
         return {
             ATTR_RESOLUTION_WIDTH: transmitter.get(ATTR_RESOLUTION_WIDTH),
             ATTR_RESOLUTION_HEIGHT: transmitter.get(ATTR_RESOLUTION_HEIGHT),

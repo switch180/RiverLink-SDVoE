@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
+import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_PORT
-from homeassistant.helpers import selector
-import homeassistant.helpers.config_validation as cv
 
 from .api import (
     RiverLinkApiClient,
@@ -22,6 +21,7 @@ from .const import (
     DOMAIN,
     LOGGER,
 )
+from .errors import ERROR_CONNECTION_FAILED
 
 
 class RiverLinkFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
@@ -56,7 +56,7 @@ class RiverLinkFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 unique_id = f"{user_input[CONF_HOST]}:{user_input[CONF_PORT]}"
                 await self.async_set_unique_id(unique_id)
                 self._abort_if_unique_id_configured()
-                
+
                 return self.async_create_entry(
                     title=f"SDVoE Matrix ({user_input[CONF_HOST]})",
                     data=user_input,
@@ -83,9 +83,7 @@ class RiverLinkFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             errors=_errors,
         )
 
-    async def _test_connection(
-        self, host: str, port: int, api_version: str
-    ) -> None:
+    async def _test_connection(self, host: str, port: int, api_version: str) -> None:
         """Test connection to the SDVoE API server."""
         client = RiverLinkApiClient(
             host=host,
@@ -95,12 +93,10 @@ class RiverLinkFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         try:
             # Test connection and API version
             if not await client.connect():
-                raise RiverLinkApiClientConnectionError(
-                    "Failed to connect or load API version"
-                )
-            
+                raise RiverLinkApiClientConnectionError(ERROR_CONNECTION_FAILED)
+
             # Test getting device data
             await client.async_get_data()
-            
+
         finally:
             await client.disconnect()

@@ -8,12 +8,9 @@ from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
 )
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import (
     ATTR_ACTIVE,
-    ATTR_DEVICE_NAME,
     ATTR_STREAM_STATE,
     ATTR_STREAM_TYPE,
     STATE_STREAMING,
@@ -23,33 +20,38 @@ from .const import (
 from .entity import RiverLinkEntity
 
 if TYPE_CHECKING:
+    from homeassistant.core import HomeAssistant
+    from homeassistant.helpers.entity_platform import AddEntitiesCallback
+
     from .coordinator import RiverLinkDataUpdateCoordinator
     from .data import RiverLinkConfigEntry
 
 
 async def async_setup_entry(
-    hass: HomeAssistant,
+    _hass: HomeAssistant,
     entry: RiverLinkConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up binary sensor platform."""
     coordinator = entry.runtime_data.coordinator
     entities: list[BinarySensorEntity] = []
-    
+
     # Create entities for all receivers
     for device_id in coordinator.data.get("receivers", {}):
-        entities.extend([
-            RiverLinkReceiverOnlineSensor(coordinator, device_id),
-            RiverLinkReceiverVideoStreamingSensor(coordinator, device_id),
-            RiverLinkReceiverAudioStreamingSensor(coordinator, device_id),
-        ])
-    
-    # Create entities for all transmitters
-    for device_id in coordinator.data.get("transmitters", {}):
-        entities.append(
-            RiverLinkTransmitterOnlineSensor(coordinator, device_id)
+        entities.extend(
+            [
+                RiverLinkReceiverOnlineSensor(coordinator, device_id),
+                RiverLinkReceiverVideoStreamingSensor(coordinator, device_id),
+                RiverLinkReceiverAudioStreamingSensor(coordinator, device_id),
+            ]
         )
-    
+
+    # Create entities for all transmitters
+    entities.extend(
+        RiverLinkTransmitterOnlineSensor(coordinator, device_id)
+        for device_id in coordinator.data.get("transmitters", {})
+    )
+
     async_add_entities(entities)
 
 
@@ -101,12 +103,12 @@ class RiverLinkReceiverVideoStreamingSensor(RiverLinkEntity, BinarySensorEntity)
         receiver = self.coordinator.data["receivers"].get(self._device_id)
         if not receiver:
             return False
-        
+
         # Check if HDMI subscription is streaming
         for sub in receiver.get("subscriptions", []):
             if sub.get(ATTR_STREAM_TYPE) == STREAM_TYPE_HDMI:
                 return sub.get(ATTR_STREAM_STATE) == STATE_STREAMING
-        
+
         return False
 
 
@@ -133,12 +135,12 @@ class RiverLinkReceiverAudioStreamingSensor(RiverLinkEntity, BinarySensorEntity)
         receiver = self.coordinator.data["receivers"].get(self._device_id)
         if not receiver:
             return False
-        
+
         # Check if HDMI_AUDIO subscription is streaming
         for sub in receiver.get("subscriptions", []):
             if sub.get(ATTR_STREAM_TYPE) == STREAM_TYPE_HDMI_AUDIO:
                 return sub.get(ATTR_STREAM_STATE) == STATE_STREAMING
-        
+
         return False
 
 

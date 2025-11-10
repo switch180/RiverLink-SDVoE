@@ -1,46 +1,83 @@
 ---
-name: "Feature request"
-description: "Suggest an idea for this project"
+name: "✨ Feature request"
+description: "Suggest a feature for the RiverLink SDVoE Matrix integration"
+labels: ["Feature Request"]
 body:
 - type: markdown
   attributes:
-    value: Before you open a new feature request, search through the existing feature requests to see if others have had the same idea.
+    value: |
+      **Thanks for suggesting a feature for RiverLink SDVoE Matrix!**
+      Before opening a new feature request, search [existing requests](https://github.com/switch180/RiverLink-SDVoE/issues?q=is%3Aissue+label%3A%22Feature+Request%22+) to see if someone else has suggested something similar.
+
 - type: checkboxes
   attributes:
     label: Checklist
     options:
-      - label: I have filled out the template to the best of my ability.
+      - label: I have filled out the template completely
         required: true
-      - label: This only contains 1 feature request (if you have multiple feature requests, open one feature request for each feature request).
+      - label: This contains only ONE feature request (open separate issues for multiple features)
         required: true
-      - label: This issue is not a duplicate feature request of [previous feature requests](https://github.com/ludeeus/integration_blueprint/issues?q=is%3Aissue+label%3A%22Feature+Request%22+).
+      - label: This is not a duplicate of [existing feature requests](https://github.com/switch180/RiverLink-SDVoE/issues?q=is%3Aissue+label%3A%22Feature+Request%22+)
         required: true
 
-- type: textarea
+- type: dropdown
   attributes:
-    label: "Is your feature request related to a problem? Please describe."
-    description: "A clear and concise description of what the problem is."
-    placeholder: "I'm always frustrated when [...]"
+    label: "Feature Category"
+    description: "What type of feature is this?"
+    options:
+      - Video/Audio Routing
+      - Display Control (modes, resolutions)
+      - Device Management
+      - Automation/Service Calls
+      - User Interface
+      - Multiview/Videowall
+      - Performance
+      - Documentation
+      - Other
   validations:
     required: true
 
 - type: textarea
   attributes:
-    label: "Describe the solution you'd like"
-    description: "A clear and concise description of what you want to happen."
+    label: "Problem or Use Case"
+    description: "What problem does this feature solve? What use case does it enable?"
+    placeholder: "I want to create automations that route multiple video sources simultaneously when a scene is activated..."
   validations:
     required: true
 
 - type: textarea
   attributes:
-    label: "Describe alternatives you've considered"
-    description: "A clear and concise description of any alternative solutions or features you've considered."
+    label: "Proposed Solution"
+    description: "Describe how you envision this feature working"
+    placeholder: |
+      Add a service call `riverlink.batch_route` that accepts a list of routes:
+      - Route transmitter A to receiver 1
+      - Route transmitter B to receiver 2
+      - etc.
   validations:
     required: true
 
 - type: textarea
   attributes:
-    label: "Additional context"
-    description: "Add any other context or screenshots about the feature request here."
+    label: "Alternative Solutions"
+    description: "Have you considered any alternative approaches?"
+    placeholder: "I could use multiple separate service calls but this would be slower and not atomic..."
   validations:
-    required: true
+    required: false
+
+- type: textarea
+  attributes:
+    label: "SDVoE Hardware Context"
+    description: "Does this feature relate to specific SDVoE hardware capabilities?"
+    placeholder: |
+      - Specific SDVoE API capabilities needed?
+      - Install-specific considerations?
+  validations:
+    required: false
+
+- type: textarea
+  attributes:
+    label: "Additional Context"
+    description: "Screenshots, mockups, or examples of similar features in other integrations"
+  validations:
+    required: false
