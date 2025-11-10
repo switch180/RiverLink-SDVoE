@@ -20,7 +20,9 @@ _Home Assistant custom integration for SDVoE API™ control._
 
 - **Home Assistant** 2025.2.4 or newer
 - **BlueRiver® AVP devices** with network-accessible API endpoint
-- **Network access** to the BlueRiver® control process (default port: 6970)
+- **SDVoE API server** running on your network (default port: 6970)
+  - Most users: Install IPA Manager - [Setup guide](docs/GETTING_STARTED.md#step-1-install-blueriver-control-server)
+  - Advanced users: Bring your own BlueRiver Control Server implementation
 - **SDVoE API™** version 2.13.0.0 or newer
 
 **Developer:** [switch180](https://github.com/switch180)
@@ -66,73 +68,23 @@ _Home Assistant custom integration for SDVoE API™ control._
 
 ---
 
-## 📦 Installation
+## 🚀 Quick Start
 
-### HACS (Recommended)
+> **⚠️ Important:** Before installing the integration, you must set up the BlueRiver Control Server (or bring your own SDVoE API server). This is required for the integration to communicate with your SDVoE devices.
 
-1. Open **HACS** in Home Assistant
-2. Go to **"Integrations"**
-3. Click the **three dots** in the top right corner
-4. Select **"Custom repositories"**
-5. Add `https://github.com/switch180/RiverLink-SDVoE` as an **Integration**
-6. Click **"Install"**
-7. **Restart Home Assistant**
+1. **Set up BlueRiver Control Server** - [Step-by-step guide](docs/GETTING_STARTED.md#step-1-install-blueriver-control-server)
+2. **Install the Integration** - [Installation instructions](docs/GETTING_STARTED.md#step-2-install-riverlink-integration-in-home-assistant)
+3. **Configure in Home Assistant** - [Configuration guide](docs/GETTING_STARTED.md#step-3-configure-the-integration)
+4. **Start Using SDVoE** - [Usage examples](docs/GETTING_STARTED.md#step-4-using-your-sdvoe-system)
 
-### Manual Installation
-
-1. Download the latest release from the [releases page](https://github.com/switch180/RiverLink-SDVoE/releases)
-2. Extract the `riverlink` folder from the archive
-3. Copy the `riverlink` folder to your `config/custom_components` directory
-4. **Restart Home Assistant**
-
----
-
-## ⚙️ Configuration
-
-1. Go to **Settings → Devices & Services**
-2. Click **"+ Add Integration"**
-3. Search for **"RiverLink SDVoE Matrix"**
-4. Enter your SDVoE™ system details:
-   - **Host**: IP address of BlueRiver® API server (e.g., `10.0.1.135`)
-   - **Port**: API port (default: `6970`)
-   - **API Version**: BlueRiver® API version (default: `2.13.0.0`)
-5. Click **Submit**
-
-The integration will discover all receivers and transmitters and create entities automatically.
-
----
-
-## 🛠️ Development
-
-### Development Environment
-
-This project uses a **VS Code devcontainer** for development:
-
-1. Open this repository in **Visual Studio Code**
-2. When prompted, click **"Reopen in Container"**
-3. Run `scripts/setup` to install dependencies
-4. Run `scripts/develop` to start Home Assistant with the integration loaded
-
-The devcontainer includes:
-- Python 3.13
-- Home Assistant 2025.2.4
-- Ruff (linting/formatting)
-- Pre-configured debugging
-
-### Code Quality
-
-**Linting:**
-```bash
-scripts/lint
-```
-
-**Code Style:** This project uses [Ruff](https://github.com/astral-sh/ruff) for formatting and linting.
+📖 **[Read the complete Getting Started Guide →](docs/GETTING_STARTED.md)**
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for:
+Contributions are welcome! Please read the [Contributing Guide](CONTRIBUTING.md) for:
+- Development environment setup
 - Code of conduct
 - Development workflow
 - Pull request process
@@ -150,7 +102,7 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 - **🐛 Report a bug**: [Open an issue](https://github.com/switch180/RiverLink-SDVoE/issues/new?template=bug.yml)
 - **✨ Request a feature**: [Open an issue](https://github.com/switch180/RiverLink-SDVoE/issues/new?template=feature_request.yml)
-- **📖 Documentation**: [Project Wiki](https://github.com/switch180/RiverLink-SDVoE)
+- **📖 Documentation**: [Getting Started Guide](docs/GETTING_STARTED.md)
 
 ---
 
