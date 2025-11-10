@@ -6,7 +6,7 @@
 
 [![hacs][hacsbadge]][hacs]
 
-_Home Assistant® custom integration for SDVoE API™ control._
+_Home Assistant custom integration for SDVoE API™ control._
 
 **⚠️ This integration is currently under active development.**
 
@@ -14,14 +14,14 @@ _Home Assistant® custom integration for SDVoE API™ control._
 
 ## 📖 About
 
-**RiverLink SDVoE Matrix** is a Home Assistant® custom integration that enables control of **SDVoE™ (Software Defined Video over Ethernet)** matrix systems via the SDVoE API™. This integration allows you to manage video routing, audio routing, and display modes directly from your Home Assistant® dashboard.
+**RiverLink SDVoE Matrix** is a Home Assistant custom integration that enables control of **SDVoE™ (Software Defined Video over Ethernet)** matrix systems via the SDVoE API™. This integration allows you to manage video routing, audio routing, and display modes directly from your Home Assistant dashboard.
 
 ### 🔌 Requirements
 
-- **Home Assistant®** 2025.2.4 or newer
-- **BlueRiver® AVP system** with network-accessible API endpoint
+- **Home Assistant** 2025.2.4 or newer
+- **BlueRiver® AVP devices** with network-accessible API endpoint
 - **Network access** to the BlueRiver® control process (default port: 6970)
-- **SDVoE API™** version 2.13.0.0 or compatible
+- **SDVoE API™** version 2.13.0.0 or newer
 
 **Developer:** [switch180](https://github.com/switch180)
 
@@ -51,9 +51,9 @@ _Home Assistant® custom integration for SDVoE API™ control._
 ### 📊 Entity Types Created
 - **Per Receiver** (9 entities):
   - 6 Sensors: Temperature, Video Source, Audio Source, Video Signal, IP Address, Firmware
-  - 3 Binary Sensors: Online, Video Streaming, Audio Streaming  
+  - 3 Binary Sensors: Online, Video Streaming, Audio Streaming
   - 3 Selects: Video Source, Display Mode, Resolution Preset
-  
+
 - **Per Transmitter** (7 entities):
   - 6 Sensors: Temperature, HDMI Stream, Audio Stream, Input Signal, IP Address, Firmware
   - 1 Binary Sensor: Online
@@ -61,7 +61,7 @@ _Home Assistant® custom integration for SDVoE API™ control._
 ### 🚧 Not Yet Implemented
 - ⏳ **Multiview/PIP** - Picture-in-picture and multiview displays
 - ⏳ **Videowall APIs** - Synchronized multi-display configurations
-- ⏳ **Service Calls** - Advanced automation via Home Assistant® services
+- ⏳ **Service Calls** - Advanced automation via Home Assistant services
 - ⏳ **Audio-Only Routing** - Independent audio matrix functionality
 
 ---
@@ -70,20 +70,20 @@ _Home Assistant® custom integration for SDVoE API™ control._
 
 ### HACS (Recommended)
 
-1. Open **HACS** in Home Assistant®
+1. Open **HACS** in Home Assistant
 2. Go to **"Integrations"**
 3. Click the **three dots** in the top right corner
 4. Select **"Custom repositories"**
 5. Add `https://github.com/switch180/RiverLink-SDVoE` as an **Integration**
 6. Click **"Install"**
-7. **Restart Home Assistant®**
+7. **Restart Home Assistant**
 
 ### Manual Installation
 
 1. Download the latest release from the [releases page](https://github.com/switch180/RiverLink-SDVoE/releases)
 2. Extract the `riverlink` folder from the archive
 3. Copy the `riverlink` folder to your `config/custom_components` directory
-4. **Restart Home Assistant®**
+4. **Restart Home Assistant**
 
 ---
 
@@ -111,11 +111,11 @@ This project uses a **VS Code devcontainer** for development:
 1. Open this repository in **Visual Studio Code**
 2. When prompted, click **"Reopen in Container"**
 3. Run `scripts/setup` to install dependencies
-4. Run `scripts/develop` to start Home Assistant® with the integration loaded
+4. Run `scripts/develop` to start Home Assistant with the integration loaded
 
 The devcontainer includes:
 - Python 3.13
-- Home Assistant® 2025.2.4
+- Home Assistant 2025.2.4
 - Ruff (linting/formatting)
 - Pre-configured debugging
 
@@ -158,16 +158,14 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 ### ⚠️ Non-Affiliation Notice
 
-**This project is an independent open-source integration developed by the community.** RiverLink SDVoE Matrix is **NOT** affiliated with, endorsed by, sponsored by, or officially connected to the SDVoE Alliance®, Semtech Corporation®, Nabu Casa, Inc., or any other trademark holder mentioned in this documentation.
+**This project is an independent open-source integration developed by the community.** RiverLink SDVoE Matrix is **NOT** affiliated with, endorsed by, sponsored by, or officially connected to the SDVoE Alliance®, Semtech Corporation®, or any other trademark holder mentioned in this documentation. This integration does not contain any properitary code of the aforementioned organizations.
 
-This integration is designed purely for interoperability with SDVoE™ technology and the SDVoE API™. We respect all intellectual property rights and make no claims to ownership of any third-party trademarks, service marks, or proprietary technologies referenced herein. The development of this integration is an independent effort to enable Home Assistant® users to control their SDVoE™-compatible devices.
+This integration is designed purely for interoperability with SDVoE™ technology and the SDVoE API™. We respect all intellectual property rights and make no claims to ownership of any third-party trademarks, service marks, or proprietary technologies referenced herein. The development of this integration is an independent effort to enable Home Assistant users to control their SDVoE™-compatible devices.
 
 ### Trademark Acknowledgments
 
 - **SDVoE™**, **SDVoE API™**, and **SDVoE Alliance®** are trademarks of the SDVoE Alliance.
 - **BlueRiver®** and **Semtech®** are registered trademarks of Semtech Corporation or its affiliates.
-- **Home Assistant®** is a registered trademark of Nabu Casa, Inc.
-- **GitHub®** is a registered trademark of GitHub, Inc.
 
 All other trademarks, service marks, and trade names referenced in this project are the property of their respective owners.
 
