@@ -94,6 +94,9 @@ RESOLUTION_PRESETS = {
     "1920×1200 @ 60Hz": (1920, 1200, 60),
 }
 
+# Resolution thresholds
+RESOLUTION_4K_HEIGHT = 2160  # 4K UHD vertical resolution threshold
+
 # Default values for video mode
 DEFAULT_DISPLAY_MODE = DISPLAY_MODE_GENLOCK
 DEFAULT_RESOLUTION_PRESET = "1080p @ 60Hz"
@@ -118,6 +121,6 @@ ATTR_HDCP_PROTECTED = "hdcp_protected"
 ATTR_HDCP_VERSION = "hdcp_version"
 
 # Resolution preset status values
-PRESET_STATUS_PENDING = "pending"    # Pending preset in genlock mode
-PRESET_STATUS_APPLIED = "applied"    # Resolution is applied to device
-PRESET_STATUS_STORED = "stored"      # Resolution stored but not applied
+PRESET_STATUS_PENDING = "pending"  # Pending preset in genlock mode
+PRESET_STATUS_APPLIED = "applied"  # Resolution is applied to device
+PRESET_STATUS_STORED = "stored"  # Resolution stored but not applied

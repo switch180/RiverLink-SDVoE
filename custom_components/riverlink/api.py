@@ -79,15 +79,13 @@ class RiverLinkApiClient:
             # Read response
             response = await self._read_response()
             data = json.loads(response)
-
             if data.get("status") == "SUCCESS":
                 LOGGER.info("Successfully loaded API version %s", self._api_version)
                 self._connected = True
                 return True
-            else:
-                LOGGER.error("Failed to load API version: %s", data)
-                await self.disconnect()
-                return False
+            LOGGER.error("Failed to load API version: %s", data)
+            await self.disconnect()
+            return False
 
         except TimeoutError as exception:
             msg = f"Timeout connecting to {self._host}:{self._port}"
