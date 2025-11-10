@@ -165,7 +165,7 @@ class RiverLinkReceiverSourceSelect(RiverLinkEntity, SelectEntity):
             if not transmitter_id:
                 msg = ERROR_TRANSMITTER_NOT_FOUND.format(name=transmitter_name)
                 LOGGER.error(msg)
-                raise ValueError(msg)
+                raise ValueError(msg)  # noqa: TRY301 - Simple error case, no need for inner function
 
             # Send join command
             client = self.coordinator.config_entry.runtime_data.client

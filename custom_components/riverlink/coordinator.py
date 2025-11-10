@@ -112,7 +112,7 @@ class RiverLinkDataUpdateCoordinator(DataUpdateCoordinator):
             "stream_map": stream_map,
         }
 
-    def _extract_video_mode_config(self, device: dict[str, Any]) -> dict[str, Any]:
+    def _extract_video_mode_config(self, device: dict[str, Any]) -> dict[str, Any]:  # noqa: PLR0912 - Complex logic needed to parse device video mode from multiple node configurations
         """
         Extract video mode configuration using correct detection logic.
 
