@@ -18,7 +18,6 @@ from .const import (
     ATTR_RESOLUTION_PRESET_STATUS,
     ATTR_RESOLUTION_WIDTH,
     ATTR_SOURCE_DEVICE_ID,
-    ATTR_SOURCE_DEVICE_NAME,
     ATTR_STREAM_INDEX,
     ATTR_STREAM_TYPE,
     DEFAULT_DISPLAY_MODE,
@@ -39,7 +38,6 @@ from .const import (
 )
 from .entity import RiverLinkEntity
 from .errors import (
-    ERROR_TRANSMITTER_NOT_FOUND,
     ERROR_UNKNOWN_MODE,
     ERROR_UNKNOWN_PRESET,
 )
@@ -87,7 +85,8 @@ class RiverLinkReceiverSourceSelect(RiverLinkEntity, SelectEntity):
         self._attr_unique_id = f"{receiver_id}_video_source_select"
 
     def _get_device_friendly_name(self, device_id: str, fallback_name: str) -> str:
-        """Return friendly name for a device_id using the device registry.
+        """
+        Return friendly name for a device_id using the device registry.
 
         Preference order:
         1. User-defined name (name_by_user)
@@ -110,7 +109,8 @@ class RiverLinkReceiverSourceSelect(RiverLinkEntity, SelectEntity):
         return f"{friendly_name} ({tx_id})"
 
     def _get_device_id_from_option(self, option: str) -> str | None:
-        """Extract the device_id from a select option label.
+        """
+        Extract the device_id from a select option label.
 
         Expects format 'Friendly Name (DEVICE_ID)'.
         """
@@ -133,7 +133,7 @@ class RiverLinkReceiverSourceSelect(RiverLinkEntity, SelectEntity):
             for tx_id, tx_data in sorted(transmitters.items())
         ]
         # Include "None" at the top to allow disconnect
-        return ["None"] + labels
+        return ["None", *labels]
 
     @property
     def current_option(self) -> str:
@@ -164,12 +164,12 @@ class RiverLinkReceiverSourceSelect(RiverLinkEntity, SelectEntity):
         """Return extra attributes including current transmitter_id."""
         receiver = self.coordinator.data["receivers"].get(self._device_id, {})
         source_device_id: str | None = None
-        
+
         for sub in receiver.get("subscriptions", []):
             if sub.get(ATTR_STREAM_TYPE) == "HDMI" and sub.get(ATTR_STREAM_INDEX) == DEFAULT_STREAM_INDEX:
                 source_device_id = sub.get(ATTR_SOURCE_DEVICE_ID)
                 break
-        
+
         return {
             ATTR_STREAM_INDEX: DEFAULT_STREAM_INDEX,
             ATTR_STREAM_TYPE: "HDMI",
@@ -178,7 +178,8 @@ class RiverLinkReceiverSourceSelect(RiverLinkEntity, SelectEntity):
         }
 
     async def async_select_option(self, option: str) -> None:
-        """Handle user selection.
+        """
+        Handle user selection.
 
         'None' → disconnect / unroute the receiver.
         Otherwise → join the selected transmitter.
@@ -196,7 +197,8 @@ class RiverLinkReceiverSourceSelect(RiverLinkEntity, SelectEntity):
                 option,
                 self.entity_id,
             )
-            raise ValueError(f"Invalid option: {option}")
+            msg = f"Invalid option: {option}"
+            raise ValueError(msg)
 
         await self._async_join_source(transmitter_id)
 
@@ -204,26 +206,26 @@ class RiverLinkReceiverSourceSelect(RiverLinkEntity, SelectEntity):
         """Leave current video and audio sources."""
         try:
             client = self.coordinator.config_entry.runtime_data.client
-            
+
             # Leave HDMI video stream
             await client.async_leave_subscription(
                 device_id=self._device_id,
                 stream_type="HDMI",
                 index=DEFAULT_STREAM_INDEX,
             )
-            
+
             # Leave HDMI audio stream
             await client.async_leave_subscription(
                 device_id=self._device_id,
                 stream_type="HDMI_AUDIO",
                 index=DEFAULT_STREAM_INDEX,
             )
-            
+
             LOGGER.info(
                 "Receiver %s left video and audio sources",
                 self._device_id,
             )
-            
+
             # NOTE: Intentionally NOT refreshing coordinator here to prevent race condition.
             # See issue #22: https://github.com/switch180/RiverLink-SDVoE/issues/22
             #
