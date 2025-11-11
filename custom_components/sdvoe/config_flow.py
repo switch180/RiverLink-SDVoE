@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_PORT
+from homeassistant.core import callback
 
 from .api import (
     RiverLinkApiClient,
@@ -29,6 +32,14 @@ class RiverLinkFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
 
+    @staticmethod
+    @callback
+    def async_get_options_flow(
+        config_entry: config_entries.ConfigEntry,
+    ) -> config_entries.OptionsFlow:
+        """Create the options flow."""
+        return OptionsFlowHandler(config_entry)
+
     async def async_step_user(
         self,
         user_input: dict | None = None,
@@ -43,13 +54,13 @@ class RiverLinkFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                     api_version=user_input[CONF_API_VERSION],
                 )
             except RiverLinkApiClientConnectionError as exception:
-                LOGGER.warning(exception)
+                LOGGER.error("Connection error: %s", exception)
                 _errors["base"] = "cannot_connect"
             except RiverLinkApiClientCommunicationError as exception:
-                LOGGER.error(exception)
+                LOGGER.error("Communication error: %s", exception)
                 _errors["base"] = "cannot_connect"
             except RiverLinkApiClientError as exception:
-                LOGGER.exception(exception)
+                LOGGER.exception("Unexpected API error: %s", exception)
                 _errors["base"] = "unknown"
             else:
                 # Use host:port as unique_id
@@ -77,6 +88,88 @@ class RiverLinkFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Required(
                         CONF_API_VERSION,
                         default=(user_input or {}).get(CONF_API_VERSION, DEFAULT_API_VERSION),
+                    ): cv.string,
+                },
+            ),
+            errors=_errors,
+        )
+
+    async def _test_connection(self, host: str, port: int, api_version: str) -> None:
+        """Test connection to the SDVoE API server."""
+        client = RiverLinkApiClient(
+            host=host,
+            port=port,
+            api_version=api_version,
+        )
+        try:
+            # Test connection and API version
+            if not await client.connect():
+                raise RiverLinkApiClientConnectionError(ERROR_CONNECTION_FAILED)
+
+            # Test getting device data
+            await client.async_get_data()
+
+        finally:
+            await client.disconnect()
+
+
+class OptionsFlowHandler(config_entries.OptionsFlow):
+    """Handle options flow for RiverLink SDVoE Matrix."""
+
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        """Initialize options flow."""
+        self.config_entry = config_entry
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Manage the options."""
+        _errors = {}
+
+        if user_input is not None:
+            # Test new connection settings
+            try:
+                await self._test_connection(
+                    host=user_input[CONF_HOST],
+                    port=user_input[CONF_PORT],
+                    api_version=user_input[CONF_API_VERSION],
+                )
+            except RiverLinkApiClientConnectionError as exception:
+                LOGGER.error("Connection error during reconfiguration: %s", exception)
+                _errors["base"] = "cannot_connect"
+            except RiverLinkApiClientCommunicationError as exception:
+                LOGGER.error("Communication error during reconfiguration: %s", exception)
+                _errors["base"] = "cannot_connect"
+            except RiverLinkApiClientError as exception:
+                LOGGER.exception("Unexpected API error during reconfiguration: %s", exception)
+                _errors["base"] = "unknown"
+            else:
+                # Update config entry with new data
+                self.hass.config_entries.async_update_entry(
+                    self.config_entry,
+                    data=user_input,
+                    title=f"SDVoE Matrix ({user_input[CONF_HOST]})",
+                )
+                # Reload the integration to apply new settings
+                await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+                return self.async_create_entry(title="", data={})
+
+        # Show form with current values pre-filled
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_HOST,
+                        default=(user_input or self.config_entry.data).get(CONF_HOST, DEFAULT_HOST),
+                    ): cv.string,
+                    vol.Required(
+                        CONF_PORT,
+                        default=(user_input or self.config_entry.data).get(CONF_PORT, DEFAULT_PORT),
+                    ): cv.port,
+                    vol.Required(
+                        CONF_API_VERSION,
+                        default=(user_input or self.config_entry.data).get(CONF_API_VERSION, DEFAULT_API_VERSION),
                     ): cv.string,
                 },
             ),
