@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.select import SelectEntity
+from homeassistant.helpers import device_registry as dr
 
 from .const import (
     ATTR_DEVICE_NAME,
@@ -16,6 +17,7 @@ from .const import (
     ATTR_RESOLUTION_PRESET,
     ATTR_RESOLUTION_PRESET_STATUS,
     ATTR_RESOLUTION_WIDTH,
+    ATTR_SOURCE_DEVICE_ID,
     ATTR_SOURCE_DEVICE_NAME,
     ATTR_STREAM_INDEX,
     ATTR_STREAM_TYPE,
@@ -27,6 +29,7 @@ from .const import (
     DISPLAY_MODE_FASTSWITCH_STRETCH,
     DISPLAY_MODE_GENLOCK,
     DISPLAY_MODE_GENLOCK_SCALING,
+    DOMAIN,
     LOGGER,
     PRESET_STATUS_APPLIED,
     PRESET_STATUS_PENDING,
@@ -83,49 +86,119 @@ class RiverLinkReceiverSourceSelect(RiverLinkEntity, SelectEntity):
         super().__init__(coordinator, receiver_id)
         self._attr_unique_id = f"{receiver_id}_video_source_select"
 
+    def _get_device_friendly_name(self, device_id: str, fallback_name: str) -> str:
+        """Return friendly name for a device_id using the device registry.
+
+        Preference order:
+        1. User-defined name (name_by_user)
+        2. Registry name
+        3. Fallback API/device name
+        """
+        device_reg = dr.async_get(self.hass)
+        device = device_reg.async_get_device(identifiers={(DOMAIN, device_id)})
+
+        if device and device.name_by_user:
+            return device.name_by_user
+        if device and device.name:
+            return device.name
+        return fallback_name
+
+    def _make_option_label(self, tx_id: str, tx_data: dict[str, Any]) -> str:
+        """Make a human-readable option label 'Friendly (DEVICE_ID)'."""
+        base_name = tx_data.get(ATTR_DEVICE_NAME, tx_id)
+        friendly_name = self._get_device_friendly_name(tx_id, base_name)
+        return f"{friendly_name} ({tx_id})"
+
+    def _get_device_id_from_option(self, option: str) -> str | None:
+        """Extract the device_id from a select option label.
+
+        Expects format 'Friendly Name (DEVICE_ID)'.
+        """
+        # Find the last ' (' and closing ')'
+        # This is more robust against parentheses in the friendly name itself.
+        start = option.rfind(" (")
+        end = option.rfind(")")
+        if start == -1 or end == -1 or end < start:
+            return None
+        # device_id is what's inside the parentheses
+        return option[start + 2 : end].strip()
+
     @property
     def options(self) -> list[str]:
-        """Return list of available video sources."""
+        """Return list of available video sources as 'Friendly (DEVICE_ID)'."""
         transmitters = self.coordinator.data.get("transmitters", {})
-        options = ["None"]  # Always include None option
-
-        options.extend(tx[ATTR_DEVICE_NAME] for tx in transmitters.values())
-
-        return options
+        # Sort for deterministic order (by tx_id)
+        labels = [
+            self._make_option_label(tx_id, tx_data)
+            for tx_id, tx_data in sorted(transmitters.items())
+        ]
+        # Include "None" at the top to allow disconnect
+        return ["None"] + labels
 
     @property
     def current_option(self) -> str:
-        """Return currently selected video source."""
+        """Return currently selected video source with friendly name."""
         receiver = self.coordinator.data["receivers"].get(self._device_id)
         if not receiver:
             return "None"
 
         # Look for HDMI:0 subscription
+        source_device_id: str | None = None
         for sub in receiver.get("subscriptions", []):
             if sub.get(ATTR_STREAM_TYPE) == "HDMI" and sub.get(ATTR_STREAM_INDEX) == DEFAULT_STREAM_INDEX:
-                source_name = sub.get(ATTR_SOURCE_DEVICE_NAME)
-                if source_name:
-                    return source_name
+                source_device_id = sub.get(ATTR_SOURCE_DEVICE_ID)
+                break
 
-        return "None"
+        if not source_device_id:
+            return "None"
+
+        transmitters = self.coordinator.data.get("transmitters", {})
+        tx_data = transmitters.get(source_device_id)
+        if not tx_data:
+            return "None"
+
+        return self._make_option_label(source_device_id, tx_data)
 
     @property
     def extra_state_attributes(self) -> dict:
-        """Return extra attributes for future multiview support."""
+        """Return extra attributes including current transmitter_id."""
+        receiver = self.coordinator.data["receivers"].get(self._device_id, {})
+        source_device_id: str | None = None
+        
+        for sub in receiver.get("subscriptions", []):
+            if sub.get(ATTR_STREAM_TYPE) == "HDMI" and sub.get(ATTR_STREAM_INDEX) == DEFAULT_STREAM_INDEX:
+                source_device_id = sub.get(ATTR_SOURCE_DEVICE_ID)
+                break
+        
         return {
             ATTR_STREAM_INDEX: DEFAULT_STREAM_INDEX,
             ATTR_STREAM_TYPE: "HDMI",
+            "current_transmitter_id": source_device_id,
             "supports_multiview": False,  # Future flag
         }
 
     async def async_select_option(self, option: str) -> None:
-        """Change the selected video source."""
+        """Handle user selection.
+
+        'None' → disconnect / unroute the receiver.
+        Otherwise → join the selected transmitter.
+        """
+        # Handle disconnect case
         if option == "None":
-            # Leave current source
             await self._async_leave_source()
-        else:
-            # Join new source
-            await self._async_join_source(option)
+            return
+
+        # Parse device_id from the label
+        transmitter_id = self._get_device_id_from_option(option)
+        if not transmitter_id:
+            LOGGER.error(
+                "Invalid option '%s' for %s; cannot parse transmitter id",
+                option,
+                self.entity_id,
+            )
+            raise ValueError(f"Invalid option: {option}")
+
+        await self._async_join_source(transmitter_id)
 
     async def _async_leave_source(self) -> None:
         """Leave current video and audio sources."""
@@ -161,24 +234,9 @@ class RiverLinkReceiverSourceSelect(RiverLinkEntity, SelectEntity):
             )
             raise
 
-    async def _async_join_source(self, transmitter_name: str) -> None:
-        """Join new video source (HDMI:0 only, audio follows)."""
+    async def _async_join_source(self, transmitter_id: str) -> None:
+        """Join new video source using transmitter device_id."""
         try:
-            # Find transmitter ID by name
-            transmitters = self.coordinator.data.get("transmitters", {})
-            transmitter_id = None
-
-            for tx_id, tx_data in transmitters.items():
-                if tx_data[ATTR_DEVICE_NAME] == transmitter_name:
-                    transmitter_id = tx_id
-                    break
-
-            if not transmitter_id:
-                msg = ERROR_TRANSMITTER_NOT_FOUND.format(name=transmitter_name)
-                LOGGER.error(msg)
-                raise ValueError(msg)  # noqa: TRY301 - Simple error case, no need for inner function
-
-            # Send join command
             client = self.coordinator.config_entry.runtime_data.client
             await client.async_join_subscription(
                 transmitter_id=transmitter_id,
@@ -198,7 +256,7 @@ class RiverLinkReceiverSourceSelect(RiverLinkEntity, SelectEntity):
             LOGGER.error(
                 "Failed to join receiver %s to %s: %s",
                 self._device_id,
-                transmitter_name,
+                transmitter_id,
                 exception,
             )
             raise
