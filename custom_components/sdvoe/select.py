@@ -128,18 +128,29 @@ class RiverLinkReceiverSourceSelect(RiverLinkEntity, SelectEntity):
             await self._async_join_source(option)
 
     async def _async_leave_source(self) -> None:
-        """Leave current video source (HDMI:0 only, audio follows)."""
+        """Leave current video and audio sources."""
         try:
             client = self.coordinator.config_entry.runtime_data.client
+            
+            # Leave HDMI video stream
             await client.async_leave_subscription(
                 device_id=self._device_id,
                 stream_type="HDMI",
                 index=DEFAULT_STREAM_INDEX,
             )
+            
+            # Leave HDMI audio stream
+            await client.async_leave_subscription(
+                device_id=self._device_id,
+                stream_type="HDMI_AUDIO",
+                index=DEFAULT_STREAM_INDEX,
+            )
+            
             LOGGER.info(
-                "Receiver %s left video source",
+                "Receiver %s left video and audio sources",
                 self._device_id,
             )
+            
             # Trigger coordinator refresh
             await self.coordinator.async_request_refresh()
         except Exception as exception:
