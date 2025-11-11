@@ -111,7 +111,7 @@ scripts/lint
 
 ### Testing Your Changes
 
-1. Make your code changes in the `custom_components/riverlink/` directory
+1. Make your code changes in the `custom_components/sdvoe/` directory
 2. The devcontainer will automatically reload the integration
 3. Configure the integration in Home Assistant pointing to your BlueRiver Control Server
 4. Test your changes with real SDVoE devices or mocked data

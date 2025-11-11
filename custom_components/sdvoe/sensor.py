@@ -391,7 +391,7 @@ class RiverLinkTransmitterHDMIStreamSensor(RiverLinkEntity, SensorEntity):
 
         self._attr_unique_id = f"{device_id}_hdmi_stream"
         self._attr_name = f"{device_name} HDMI Stream"
-        self.entity_id = f"sensor.riverlink_{device_name.lower().replace(' ', '_').replace('-', '_')}_hdmi_stream"
+        self.entity_id = f"sensor.sdvoe_{device_name.lower().replace(' ', '_').replace('-', '_')}_hdmi_stream"
 
     @property
     def native_value(self) -> str | None:
@@ -444,7 +444,7 @@ class RiverLinkTransmitterAudioStreamSensor(RiverLinkEntity, SensorEntity):
 
         self._attr_unique_id = f"{device_id}_audio_stream"
         self._attr_name = f"{device_name} Audio Stream"
-        self.entity_id = f"sensor.riverlink_{device_name.lower().replace(' ', '_').replace('-', '_')}_audio_stream"
+        self.entity_id = f"sensor.sdvoe_{device_name.lower().replace(' ', '_').replace('-', '_')}_audio_stream"
 
     @property
     def native_value(self) -> str | None:

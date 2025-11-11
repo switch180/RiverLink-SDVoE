@@ -75,8 +75,8 @@ You can install the RiverLink SDVoE Matrix integration using either HACS (recomm
 ### Option B: Manual Installation
 
 1. Download the latest release from the [releases page](https://github.com/switch180/RiverLink-SDVoE/releases)
-2. Extract the `riverlink` folder from the archive
-3. Copy the `riverlink` folder to your `config/custom_components` directory
+2. Extract the `sdvoe` folder from the archive
+3. Copy the `sdvoe` folder to your `config/custom_components` directory
 4. **Restart Home Assistant**
 
 ---

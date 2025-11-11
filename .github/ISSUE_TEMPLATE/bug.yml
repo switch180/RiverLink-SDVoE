@@ -91,7 +91,7 @@ body:
       ```yaml
       logger:
         logs:
-          custom_components.riverlink: debug
+          custom_components.sdvoe: debug
       ```
       Then restart HA and reproduce the issue. Paste ALL logs from startup to error.
     render: text
