@@ -17,8 +17,8 @@ if TYPE_CHECKING:
 
 ENTITY_DESCRIPTIONS = (
     SwitchEntityDescription(
-        key="riverlink",
-        name="RiverLink Switch",
+        key="sdvoe",
+        name="SDVoE Switch",
         icon="mdi:format-quote-close",
     ),
 )

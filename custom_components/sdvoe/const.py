@@ -4,7 +4,7 @@ from logging import Logger, getLogger
 
 LOGGER: Logger = getLogger(__package__)
 
-DOMAIN = "riverlink"
+DOMAIN = "sdvoe"
 ATTRIBUTION = "Tool developed by switch180 on GitHub: https://github.com/switch180"
 
 # Configuration keys

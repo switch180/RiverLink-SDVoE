@@ -50,7 +50,7 @@ body:
     label: "Proposed Solution"
     description: "Describe how you envision this feature working"
     placeholder: |
-      Add a service call `riverlink.batch_route` that accepts a list of routes:
+      Add a service call `sdvoe.batch_route` that accepts a list of routes:
       - Route transmitter A to receiver 1
       - Route transmitter B to receiver 2
       - etc.
