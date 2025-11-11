@@ -224,8 +224,14 @@ class RiverLinkReceiverSourceSelect(RiverLinkEntity, SelectEntity):
                 self._device_id,
             )
             
-            # Trigger coordinator refresh
-            await self.coordinator.async_request_refresh()
+            # NOTE: Intentionally NOT refreshing coordinator here to prevent race condition.
+            # See issue #22: https://github.com/switch180/RiverLink-SDVoE/issues/22
+            #
+            # If user immediately selects another source after "None", the join operation
+            # will trigger a refresh after hardware processes both commands. This prevents
+            # the leave's refresh from showing "None" before join completes.
+            #
+            # If "None" was the final selection, regular polling (5s) will pick up the change.
         except Exception as exception:
             LOGGER.error(
                 "Failed to leave source for receiver %s: %s",
