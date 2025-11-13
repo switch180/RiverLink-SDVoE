@@ -128,10 +128,7 @@ class RiverLinkReceiverSourceSelect(RiverLinkEntity, SelectEntity):
         """Return list of available video sources as 'Friendly (DEVICE_ID)'."""
         transmitters = self.coordinator.data.get("transmitters", {})
         # Sort for deterministic order (by tx_id)
-        labels = [
-            self._make_option_label(tx_id, tx_data)
-            for tx_id, tx_data in sorted(transmitters.items())
-        ]
+        labels = [self._make_option_label(tx_id, tx_data) for tx_id, tx_data in sorted(transmitters.items())]
         # Include "None" at the top to allow disconnect
         return ["None", *labels]
 
