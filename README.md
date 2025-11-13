@@ -130,7 +130,7 @@ This project is licensed under the **MIT License** and implements interoperabili
 [commits-shield]: https://img.shields.io/github/commit-activity/y/switch180/RiverLink-SDVoE.svg?style=for-the-badge
 [commits]: https://github.com/switch180/RiverLink-SDVoE/commits/main
 [hacs]: https://github.com/hacs/integration
-[hacsbadge]: https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge
+[hacsbadge]: https://img.shields.io/badge/HACS-Default-41BDF5.svg?style=for-the-badge
 [license-shield]: https://img.shields.io/github/license/switch180/RiverLink-SDVoE.svg?style=for-the-badge
 [releases-shield]: https://img.shields.io/github/release/switch180/RiverLink-SDVoE.svg?style=for-the-badge
 [releases]: https://github.com/switch180/RiverLink-SDVoE/releases

@@ -60,19 +60,33 @@ The BlueRiver Control Server is **required** for this integration to work. It ac
 
 ## Step 2: Install RiverLink Integration in Home Assistant
 
-You can install the RiverLink SDVoE Matrix integration using either HACS (recommended) or manual installation.
+You can install the RiverLink SDVoE Matrix integration using HACS (recommended) or manual installation.
 
-### Option A: HACS Installation (Recommended)
+### Option A: HACS Installation (Recommended) ⭐
+
+RiverLink SDVoE Matrix is now available in the **official HACS default repository**!
+
+1. Open **HACS** in Home Assistant
+2. Go to **"Integrations"**
+3. Click **"+ Explore & Download Repositories"**
+4. Search for **"RiverLink SDVoE Matrix"**
+5. Click on the integration
+6. Click **"Download"**
+7. **Restart Home Assistant**
+
+### Option B: Add Custom Repository (Fallback)
+
+If you need to install from the custom repository directly:
 
 1. Open **HACS** in Home Assistant
 2. Go to **"Integrations"**
 3. Click the **three dots** in the top right corner
 4. Select **"Custom repositories"**
 5. Add `https://github.com/switch180/RiverLink-SDVoE` as an **Integration**
-6. Click **"Install"**
+6. Click **"Add"**, then find and install **"RiverLink SDVoE Matrix"**
 7. **Restart Home Assistant**
 
-### Option B: Manual Installation
+### Option C: Manual Installation
 
 1. Download the latest release from the [releases page](https://github.com/switch180/RiverLink-SDVoE/releases)
 2. Extract the `sdvoe` folder from the archive
