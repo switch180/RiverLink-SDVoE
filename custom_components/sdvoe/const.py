@@ -11,7 +11,7 @@ ATTRIBUTION = "Tool developed by switch180 on GitHub: https://github.com/switch1
 CONF_API_VERSION = "api_version"
 
 # Default values
-DEFAULT_HOST = "10.0.1.135"
+DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 6970
 DEFAULT_API_VERSION = "2.13.0.0"
 DEFAULT_SCAN_INTERVAL = 5  # seconds

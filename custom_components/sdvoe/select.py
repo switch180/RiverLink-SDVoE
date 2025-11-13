@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.select import SelectEntity
@@ -200,22 +201,22 @@ class RiverLinkReceiverSourceSelect(RiverLinkEntity, SelectEntity):
         await self._async_join_source(transmitter_id)
 
     async def _async_leave_source(self) -> None:
-        """Leave current video and audio sources."""
+        """Leave current video and audio sources in parallel."""
         try:
             client = self.coordinator.config_entry.runtime_data.client
 
-            # Leave HDMI video stream
-            await client.async_leave_subscription(
-                device_id=self._device_id,
-                stream_type="HDMI",
-                index=DEFAULT_STREAM_INDEX,
-            )
-
-            # Leave HDMI audio stream
-            await client.async_leave_subscription(
-                device_id=self._device_id,
-                stream_type="HDMI_AUDIO",
-                index=DEFAULT_STREAM_INDEX,
+            # Leave both HDMI video and audio streams in parallel for faster execution
+            await asyncio.gather(
+                client.async_leave_subscription(
+                    device_id=self._device_id,
+                    stream_type="HDMI",
+                    index=DEFAULT_STREAM_INDEX,
+                ),
+                client.async_leave_subscription(
+                    device_id=self._device_id,
+                    stream_type="HDMI_AUDIO",
+                    index=DEFAULT_STREAM_INDEX,
+                ),
             )
 
             LOGGER.info(
@@ -240,23 +241,39 @@ class RiverLinkReceiverSourceSelect(RiverLinkEntity, SelectEntity):
             raise
 
     async def _async_join_source(self, transmitter_id: str) -> None:
-        """Join new video source using transmitter device_id."""
+        """Join video and audio sources in parallel using transmitter device_id."""
         try:
             client = self.coordinator.config_entry.runtime_data.client
-            await client.async_join_subscription(
-                transmitter_id=transmitter_id,
-                receiver_id=self._device_id,
-                stream_type="HDMI",
-                tx_index=DEFAULT_STREAM_INDEX,
-                rx_index=DEFAULT_STREAM_INDEX,
+            
+            # Join both HDMI video and audio streams in parallel for faster execution
+            await asyncio.gather(
+                client.async_join_subscription(
+                    transmitter_id=transmitter_id,
+                    receiver_id=self._device_id,
+                    stream_type="HDMI",
+                    tx_index=DEFAULT_STREAM_INDEX,
+                    rx_index=DEFAULT_STREAM_INDEX,
+                ),
+                client.async_join_subscription(
+                    transmitter_id=transmitter_id,
+                    receiver_id=self._device_id,
+                    stream_type="HDMI_AUDIO",
+                    tx_index=DEFAULT_STREAM_INDEX,
+                    rx_index=DEFAULT_STREAM_INDEX,
+                ),
             )
+            
             LOGGER.info(
-                "Receiver %s joined to transmitter %s",
+                "Receiver %s joined video and audio to transmitter %s",
                 self._device_id,
                 transmitter_id,
             )
-            # Trigger coordinator refresh
-            await self.coordinator.async_request_refresh()
+            # NOTE: Intentionally NOT refreshing coordinator here to prevent race condition.
+            # See issue #22: https://github.com/switch180/RiverLink-SDVoE/issues/22
+            #
+            # If user immediately selects another source, the join operation
+            # will trigger a refresh after hardware processes both commands.
+            # Regular polling (5s) will pick up the change.
         except Exception as exception:
             LOGGER.error(
                 "Failed to join receiver %s to %s: %s",
