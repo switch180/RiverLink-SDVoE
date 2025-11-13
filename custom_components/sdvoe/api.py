@@ -11,10 +11,16 @@ from .const import (
     API_REQUEST_COMMAND,
     API_REQUIRE_COMMAND,
     API_TIMEOUT,
+    CONNECT_RETRY_INITIAL_DELAY,
+    CONNECT_RETRY_MAX_DELAY,
     LOGGER,
+    MAX_CONNECT_RETRIES_SETUP,
 )
 from .errors import (
     ERROR_CONNECTION_CLOSED,
+    ERROR_CONNECTION_LOGIC,
+    ERROR_CONNECTION_RETRY_FAILED,
+    ERROR_CONNECTION_UNEXPECTED,
     ERROR_GET_DEVICES_FAILED,
     ERROR_NO_REQUEST_ID,
     ERROR_NOT_CONNECTED,
@@ -52,53 +58,103 @@ class RiverLinkApiClient:
         self._writer: asyncio.StreamWriter | None = None
         self._connected = False
 
-    async def connect(self) -> bool:
+    async def connect(
+        self,
+        max_retries: int = MAX_CONNECT_RETRIES_SETUP,
+        initial_delay: float = CONNECT_RETRY_INITIAL_DELAY,
+        max_delay: float = CONNECT_RETRY_MAX_DELAY,
+    ) -> bool:
         """
-        Connect to the SDVoE API server and load the API version.
+        Connect to the SDVoE API server with retry logic.
+
+        Args:
+            max_retries: Maximum connection attempts (default from const)
+            initial_delay: Initial retry delay in seconds (default from const)
+            max_delay: Maximum retry delay in seconds (default from const)
 
         Returns:
-            True if connection successful, False otherwise.
+            True if connection successful
+
+        Raises:
+            RiverLinkApiClientConnectionError: If all retries fail
 
         """
-        try:
-            LOGGER.debug("Connecting to SDVoE API at %s:%s", self._host, self._port)
+        delay = initial_delay
+        last_error = None
 
-            # Open TCP connection
-            self._reader, self._writer = await asyncio.wait_for(
-                asyncio.open_connection(self._host, self._port),
-                timeout=API_TIMEOUT,
-            )
+        for attempt in range(1, max_retries + 1):
+            try:
+                LOGGER.debug(
+                    "Connecting to SDVoE API at %s:%s (attempt %s/%s)",
+                    self._host,
+                    self._port,
+                    attempt,
+                    max_retries,
+                )
 
-            # Send require command to load API
-            require_cmd = f"{API_REQUIRE_COMMAND} {self._api_version}\n"
-            LOGGER.debug("Sending require command: %s", require_cmd.strip())
+                # Open TCP connection
+                self._reader, self._writer = await asyncio.wait_for(
+                    asyncio.open_connection(self._host, self._port),
+                    timeout=API_TIMEOUT,
+                )
 
-            self._writer.write(require_cmd.encode("utf-8"))
-            await self._writer.drain()
+                # Send require command to load API
+                require_cmd = f"{API_REQUIRE_COMMAND} {self._api_version}\n"
+                LOGGER.debug("Sending require command: %s", require_cmd.strip())
 
-            # Read response
-            response = await self._read_response()
-            data = json.loads(response)
-            if data.get("status") == "SUCCESS":
-                LOGGER.info("Successfully loaded API version %s", self._api_version)
-                self._connected = True
-                return True
-            LOGGER.error("Failed to load API version: %s", data)
-            await self.disconnect()
-            return False
+                self._writer.write(require_cmd.encode("utf-8"))
+                await self._writer.drain()
 
-        except TimeoutError as exception:
-            msg = f"Timeout connecting to {self._host}:{self._port}"
-            LOGGER.error(msg)
-            raise RiverLinkApiClientConnectionError(msg) from exception
-        except OSError as exception:
-            msg = f"Connection error: {exception}"
-            LOGGER.error(msg)
-            raise RiverLinkApiClientConnectionError(msg) from exception
-        except Exception as exception:
-            msg = f"Unexpected error during connection: {exception}"
-            LOGGER.error(msg)
-            raise RiverLinkApiClientError(msg) from exception
+                # Read response
+                response = await self._read_response()
+                data = json.loads(response)
+
+                if data.get("status") == "SUCCESS":
+                    LOGGER.info("Successfully connected to BlueRiver add-on")
+                    self._connected = True
+                    return True
+
+                # API rejected connection
+                LOGGER.error("API rejected connection: %s", data)
+                await self.disconnect()
+                return False
+
+            except (TimeoutError, OSError, ConnectionRefusedError) as exception:
+                last_error = exception
+
+                # Connection failed - retry?
+                if attempt < max_retries:
+                    LOGGER.info(
+                        "Connection attempt %s/%s failed: %s. "
+                        "Retrying in %.1f seconds... "
+                        "(BlueRiver add-on may still be starting up)",
+                        attempt,
+                        max_retries,
+                        exception,
+                        delay,
+                    )
+                    await asyncio.sleep(delay)
+                    # Exponential backoff with cap
+                    delay = min(delay * 1.5, max_delay)
+                else:
+                    # All retries exhausted
+                    msg = ERROR_CONNECTION_RETRY_FAILED.format(
+                        host=self._host,
+                        port=self._port,
+                        attempts=max_retries,
+                        error=exception,
+                    )
+                    LOGGER.error(msg)
+                    raise RiverLinkApiClientConnectionError(msg) from last_error
+
+            except Exception as exception:
+                # Unexpected error - don't retry
+                msg = ERROR_CONNECTION_UNEXPECTED.format(error=exception)
+                LOGGER.error(msg)
+                raise RiverLinkApiClientError(msg) from exception
+
+        # Should never reach here
+        raise RiverLinkApiClientError(ERROR_CONNECTION_LOGIC)
 
     async def disconnect(self) -> None:
         """Disconnect from the API server."""

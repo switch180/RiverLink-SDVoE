@@ -22,6 +22,12 @@ API_REQUIRE_COMMAND = "require blueriver_api"
 API_GET_ALL_DEVICES = "get all device"
 API_REQUEST_COMMAND = "request"
 
+# Connection retry settings (for add-on startup delays)
+MAX_CONNECT_RETRIES_SETUP = 5  # During integration setup
+MAX_CONNECT_RETRIES_RUNTIME = 1  # During coordinator polling
+CONNECT_RETRY_INITIAL_DELAY = 2.0  # Seconds
+CONNECT_RETRY_MAX_DELAY = 10.0  # Maximum delay between retries
+
 # Device attributes
 ATTR_DEVICE_ID = "device_id"
 ATTR_DEVICE_NAME = "device_name"

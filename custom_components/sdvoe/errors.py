@@ -4,6 +4,9 @@
 ERROR_NOT_CONNECTED = "Not connected to API server"
 ERROR_CONNECTION_CLOSED = "Connection closed by server"
 ERROR_CONNECTION_FAILED = "Failed to connect or load API version"
+ERROR_CONNECTION_RETRY_FAILED = "Failed to connect to {host}:{port} after {attempts} attempts: {error}"
+ERROR_CONNECTION_UNEXPECTED = "Unexpected error during connection: {error}"
+ERROR_CONNECTION_LOGIC = "Connection logic error (reached end of retry loop)"
 
 # API errors
 ERROR_NO_REQUEST_ID = "No request_id in PROCESSING response"
