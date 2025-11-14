@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import functools
 import json
 from typing import Any
 
@@ -39,6 +40,22 @@ class RiverLinkApiClientCommunicationError(RiverLinkApiClientError):
 
 class RiverLinkApiClientConnectionError(RiverLinkApiClientError):
     """Exception to indicate a connection error."""
+
+
+def with_lock(func: Any) -> Any:
+    """
+    Serialize API operations using asyncio.Lock.
+
+    Ensures that public API methods (join, leave, set_video_mode, etc.)
+    hold the lock for their entire execution, including command sending
+    and PROCESSING status polling. This prevents race conditions when
+    multiple operations are called in quick succession.
+    """
+    @functools.wraps(func)
+    async def wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
+        async with self._lock:
+            return await func(self, *args, **kwargs)
+    return wrapper
 
 
 class RiverLinkApiClient:
@@ -222,10 +239,6 @@ class RiverLinkApiClient:
 
         Handles PROCESSING status by polling with request command.
 
-        Uses asyncio.Lock to serialize all socket operations and prevent
-        concurrent access that could cause command interleaving or response
-        mismatches when multiple devices switch sources simultaneously.
-
         Args:
             command: Text command to send (without newline).
 
@@ -236,35 +249,34 @@ class RiverLinkApiClient:
         if not self.is_connected:
             raise RiverLinkApiClientCommunicationError(ERROR_NOT_CONNECTED)
 
-        async with self._lock:  # Serialize all socket operations
-            try:
-                # Send command
-                cmd_str = command + "\n"
-                LOGGER.debug("Sending command: %s", command)
+        try:
+            # Send command
+            cmd_str = command + "\n"
+            LOGGER.debug("Sending command: %s", command)
 
-                self._writer.write(cmd_str.encode("utf-8"))
-                await self._writer.drain()
+            self._writer.write(cmd_str.encode("utf-8"))
+            await self._writer.drain()
 
-                # Read response
-                response = await self._read_response()
-                data = json.loads(response)
+            # Read response
+            response = await self._read_response()
+            data = json.loads(response)
 
-                # Handle PROCESSING status with polling
-                if data.get("status") == "PROCESSING":
-                    request_id = data.get("request_id")
-                    if not request_id:
-                        raise RiverLinkApiClientError(ERROR_NO_REQUEST_ID)  # noqa: TRY301
+            # Handle PROCESSING status with polling
+            if data.get("status") == "PROCESSING":
+                request_id = data.get("request_id")
+                if not request_id:
+                    raise RiverLinkApiClientError(ERROR_NO_REQUEST_ID)  # noqa: TRY301
 
-                    LOGGER.debug("Command returned PROCESSING, polling request %s", request_id)
-                    return await self._poll_request(request_id)
-                return data
+                LOGGER.debug("Command returned PROCESSING, polling request %s", request_id)
+                return await self._poll_request(request_id)
+            return data
 
-            except json.JSONDecodeError as exception:
-                msg = f"Invalid JSON response: {response}"
-                raise RiverLinkApiClientError(msg) from exception
-            except Exception as exception:
-                msg = f"Error sending command: {exception}"
-                raise RiverLinkApiClientCommunicationError(msg) from exception
+        except json.JSONDecodeError as exception:
+            msg = f"Invalid JSON response: {response}"
+            raise RiverLinkApiClientError(msg) from exception
+        except Exception as exception:
+            msg = f"Error sending command: {exception}"
+            raise RiverLinkApiClientCommunicationError(msg) from exception
 
     async def _poll_request(self, request_id: int, max_attempts: int = 20) -> dict[str, Any]:
         """
@@ -308,6 +320,7 @@ class RiverLinkApiClient:
         msg = f"Request {request_id} timed out after {max_attempts} attempts"
         raise RiverLinkApiClientCommunicationError(msg)
 
+    @with_lock
     async def async_get_data(self) -> dict[str, Any]:
         """
         Get data from all devices in the SDVoE network.
@@ -341,6 +354,7 @@ class RiverLinkApiClient:
                 raise RiverLinkApiClientError(msg) from err
             return response
 
+    @with_lock
     async def async_join_subscription(
         self,
         transmitter_id: str,
@@ -378,6 +392,7 @@ class RiverLinkApiClient:
 
         return response
 
+    @with_lock
     async def async_leave_subscription(
         self,
         device_id: str,
@@ -411,6 +426,7 @@ class RiverLinkApiClient:
 
         return response
 
+    @with_lock
     async def async_set_video_mode(
         self,
         device_id: str,
