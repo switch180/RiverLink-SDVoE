@@ -57,6 +57,7 @@ class RiverLinkApiClient:
         self._reader: asyncio.StreamReader | None = None
         self._writer: asyncio.StreamWriter | None = None
         self._connected = False
+        self._lock = asyncio.Lock()  # Serialize command execution to prevent concurrent socket access
 
     async def connect(
         self,
@@ -221,6 +222,10 @@ class RiverLinkApiClient:
 
         Handles PROCESSING status by polling with request command.
 
+        Uses asyncio.Lock to serialize all socket operations and prevent
+        concurrent access that could cause command interleaving or response
+        mismatches when multiple devices switch sources simultaneously.
+
         Args:
             command: Text command to send (without newline).
 
@@ -231,34 +236,35 @@ class RiverLinkApiClient:
         if not self.is_connected:
             raise RiverLinkApiClientCommunicationError(ERROR_NOT_CONNECTED)
 
-        try:
-            # Send command
-            cmd_str = command + "\n"
-            LOGGER.debug("Sending command: %s", command)
+        async with self._lock:  # Serialize all socket operations
+            try:
+                # Send command
+                cmd_str = command + "\n"
+                LOGGER.debug("Sending command: %s", command)
 
-            self._writer.write(cmd_str.encode("utf-8"))
-            await self._writer.drain()
+                self._writer.write(cmd_str.encode("utf-8"))
+                await self._writer.drain()
 
-            # Read response
-            response = await self._read_response()
-            data = json.loads(response)
+                # Read response
+                response = await self._read_response()
+                data = json.loads(response)
 
-            # Handle PROCESSING status with polling
-            if data.get("status") == "PROCESSING":
-                request_id = data.get("request_id")
-                if not request_id:
-                    raise RiverLinkApiClientError(ERROR_NO_REQUEST_ID)  # noqa: TRY301
+                # Handle PROCESSING status with polling
+                if data.get("status") == "PROCESSING":
+                    request_id = data.get("request_id")
+                    if not request_id:
+                        raise RiverLinkApiClientError(ERROR_NO_REQUEST_ID)  # noqa: TRY301
 
-                LOGGER.debug("Command returned PROCESSING, polling request %s", request_id)
-                return await self._poll_request(request_id)
-            return data
+                    LOGGER.debug("Command returned PROCESSING, polling request %s", request_id)
+                    return await self._poll_request(request_id)
+                return data
 
-        except json.JSONDecodeError as exception:
-            msg = f"Invalid JSON response: {response}"
-            raise RiverLinkApiClientError(msg) from exception
-        except Exception as exception:
-            msg = f"Error sending command: {exception}"
-            raise RiverLinkApiClientCommunicationError(msg) from exception
+            except json.JSONDecodeError as exception:
+                msg = f"Invalid JSON response: {response}"
+                raise RiverLinkApiClientError(msg) from exception
+            except Exception as exception:
+                msg = f"Error sending command: {exception}"
+                raise RiverLinkApiClientCommunicationError(msg) from exception
 
     async def _poll_request(self, request_id: int, max_attempts: int = 20) -> dict[str, Any]:
         """
