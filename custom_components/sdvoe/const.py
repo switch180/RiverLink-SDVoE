@@ -28,6 +28,10 @@ MAX_CONNECT_RETRIES_RUNTIME = 1  # During coordinator polling
 CONNECT_RETRY_INITIAL_DELAY = 2.0  # Seconds
 CONNECT_RETRY_MAX_DELAY = 10.0  # Maximum delay between retries
 
+# Subscription verification retry limits
+MAX_JOIN_RETRIES = 5  # Maximum retries for join until streaming verified
+MAX_LEAVE_RETRIES = 3  # Maximum retries for leave until stopped verified
+
 # Device attributes
 ATTR_DEVICE_ID = "device_id"
 ATTR_DEVICE_NAME = "device_name"

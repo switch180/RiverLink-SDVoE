@@ -5,8 +5,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.select import SelectEntity
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
 
+from .api import RiverLinkApiClientError
 from .const import (
     ATTR_DEVICE_NAME,
     ATTR_DISPLAY_MODE,
@@ -38,6 +40,8 @@ from .const import (
 )
 from .entity import RiverLinkEntity
 from .errors import (
+    ERROR_UI_JOIN_FAILED,
+    ERROR_UI_LEAVE_FAILED,
     ERROR_UNKNOWN_MODE,
     ERROR_UNKNOWN_PRESET,
 )
@@ -231,6 +235,14 @@ class RiverLinkReceiverSourceSelect(RiverLinkEntity, SelectEntity):
             # the leave's refresh from showing "None" before join completes.
             #
             # If "None" was the final selection, regular polling (5s) will pick up the change.
+        except RiverLinkApiClientError as exc:
+            LOGGER.error(
+                "Failed to leave source for receiver %s: %s",
+                self._device_id,
+                exc,
+            )
+            msg = ERROR_UI_LEAVE_FAILED.format(error=str(exc))
+            raise HomeAssistantError(msg) from exc
         except Exception as exception:
             LOGGER.error(
                 "Failed to leave source for receiver %s: %s",
@@ -269,6 +281,15 @@ class RiverLinkReceiverSourceSelect(RiverLinkEntity, SelectEntity):
             )
             # Trigger coordinator refresh after both operations complete
             await self.coordinator.async_request_refresh()
+        except RiverLinkApiClientError as exc:
+            LOGGER.error(
+                "Failed to join receiver %s to %s: %s",
+                self._device_id,
+                transmitter_id,
+                exc,
+            )
+            msg = ERROR_UI_JOIN_FAILED.format(error=str(exc))
+            raise HomeAssistantError(msg) from exc
         except Exception as exception:
             LOGGER.error(
                 "Failed to join receiver %s to %s: %s",

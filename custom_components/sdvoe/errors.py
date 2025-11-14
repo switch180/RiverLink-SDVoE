@@ -21,3 +21,25 @@ ERROR_UNKNOWN_VIDEO_MODE = "Unknown video mode: {mode}"
 
 # Validation errors
 ERROR_SCALING_MODE_REQUIRES_RESOLUTION = "Scaling modes (genlock_scaling, fastswitch) require width, height, and fps"
+
+# Join/Leave subscription errors
+ERROR_JOIN_FAILED = "Failed to join subscription: {message}"
+ERROR_LEAVE_FAILED = "Failed to leave subscription: {message}"
+
+# Subscription verification errors (after retries exhausted)
+ERROR_JOIN_NOT_STREAMING = (
+    "Subscription {stream_type}:{index} failed to stream on {receiver_id} "
+    "after {attempts} attempts"
+)
+
+ERROR_LEAVE_STILL_STREAMING = (
+    "Subscription {stream_type}:{index} still streaming on {device_id} "
+    "after {attempts} leave attempts"
+)
+
+# Device state query error
+ERROR_GET_DEVICE_STATE_FAILED = "Failed to get device state: {message}"
+
+# UI error messages (for HomeAssistantError)
+ERROR_UI_JOIN_FAILED = "Failed to switch video source: {error}"
+ERROR_UI_LEAVE_FAILED = "Failed to disconnect video source: {error}"

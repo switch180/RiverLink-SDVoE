@@ -14,15 +14,24 @@ from .const import (
     API_TIMEOUT,
     CONNECT_RETRY_INITIAL_DELAY,
     CONNECT_RETRY_MAX_DELAY,
+    DEFAULT_STREAM_INDEX,
     LOGGER,
     MAX_CONNECT_RETRIES_SETUP,
+    MAX_JOIN_RETRIES,
+    MAX_LEAVE_RETRIES,
+    STATE_STREAMING,
 )
 from .errors import (
     ERROR_CONNECTION_CLOSED,
     ERROR_CONNECTION_LOGIC,
     ERROR_CONNECTION_RETRY_FAILED,
     ERROR_CONNECTION_UNEXPECTED,
+    ERROR_GET_DEVICE_STATE_FAILED,
     ERROR_GET_DEVICES_FAILED,
+    ERROR_JOIN_FAILED,
+    ERROR_JOIN_NOT_STREAMING,
+    ERROR_LEAVE_FAILED,
+    ERROR_LEAVE_STILL_STREAMING,
     ERROR_NO_REQUEST_ID,
     ERROR_NOT_CONNECTED,
     ERROR_SCALING_MODE_REQUIRES_RESOLUTION,
@@ -320,6 +329,83 @@ class RiverLinkApiClient:
         msg = f"Request {request_id} timed out after {max_attempts} attempts"
         raise RiverLinkApiClientCommunicationError(msg)
 
+    async def _get_device_state_internal(self, device_id: str) -> dict[str, Any]:
+        """
+        Get device state (internal, no lock).
+
+        Uses command: get DEVICE_ID device
+
+        MUST be called from within a @with_lock method.
+
+        Args:
+            device_id: Device ID to query
+
+        Returns:
+            API response with device data
+
+        Raises:
+            RiverLinkApiClientError: If command fails
+
+        """
+        command = f"get {device_id} device"
+        response = await self._send_command(command)
+
+        if response.get("status") != "SUCCESS":
+            error = response.get("error", {})
+            msg = ERROR_GET_DEVICE_STATE_FAILED.format(
+                message=error.get("message", "Unknown error")
+            )
+            raise RiverLinkApiClientError(msg)
+
+        return response
+
+    @with_lock
+    async def async_get_device_state(self, device_id: str) -> dict[str, Any]:
+        """
+        Get current state for a specific device (public, locked).
+
+        For external callers who need device state.
+
+        Args:
+            device_id: Device ID to query
+
+        Returns:
+            API response with device data
+
+        """
+        return await self._get_device_state_internal(device_id)
+
+    def _is_subscription_streaming(
+        self,
+        device_data: dict,
+        stream_type: str,
+        stream_index: int,
+    ) -> bool:
+        """
+        Check if subscription is STREAMING.
+
+        Args:
+            device_data: Parsed device response from get command
+            stream_type: "HDMI" or "HDMI_AUDIO"
+            stream_index: Subscription index to check
+
+        Returns:
+            True if subscription[type, index].status.state == "STREAMING"
+
+        """
+        result = device_data.get("result", {})
+        device = result.get("device", {})
+        subscriptions = device.get("subscriptions", [])
+
+        for sub in subscriptions:
+            if (sub.get("type") == stream_type and
+                sub.get("index") == stream_index):
+                status = sub.get("status", {})
+                state = status.get("state", "STOPPED")
+                return state == STATE_STREAMING
+
+        return False
+
     @with_lock
     async def async_get_data(self) -> dict[str, Any]:
         """
@@ -360,71 +446,168 @@ class RiverLinkApiClient:
         transmitter_id: str,
         receiver_id: str,
         stream_type: str = "HDMI",
-        tx_index: int = 0,
-        rx_index: int = 0,
+        tx_index: int = DEFAULT_STREAM_INDEX,
+        rx_index: int = DEFAULT_STREAM_INDEX,
     ) -> dict[str, Any]:
         """
-        Join transmitter stream to receiver subscription.
+        Join subscription with retry-until-streaming verification.
 
-        Audio (HDMI_AUDIO) automatically follows HDMI join.
+        Workaround for hardware bug where join returns SUCCESS
+        but stream doesn't start. Retries until verified STREAMING.
 
         Args:
             transmitter_id: Transmitter device ID
             receiver_id: Receiver device ID
             stream_type: Stream type (default: HDMI)
-            tx_index: Transmitter stream index (default: 0)
-            rx_index: Receiver subscription index (default: 0)
+            tx_index: Transmitter stream index (default: DEFAULT_STREAM_INDEX)
+            rx_index: Receiver subscription index (default: DEFAULT_STREAM_INDEX)
 
         Returns:
             API response dict
+
+        Raises:
+            RiverLinkApiClientError: If join fails or verification fails after retries
 
         """
         if not self.is_connected:
             await self.connect()
 
         command = f"join {transmitter_id}:{stream_type}:{tx_index} {receiver_id}:{stream_type}:{rx_index}"
-        response = await self._send_command(command)
 
-        if response.get("status") != "SUCCESS":
-            error = response.get("error", {})
-            msg = f"Failed to join subscription: {error.get('message', 'Unknown error')}"
-            raise RiverLinkApiClientError(msg)
+        for attempt in range(1, MAX_JOIN_RETRIES + 1):
+            LOGGER.debug(
+                "Join attempt %d/%d: %s:%s:%d → %s:%s:%d",
+                attempt,
+                MAX_JOIN_RETRIES,
+                transmitter_id,
+                stream_type,
+                tx_index,
+                receiver_id,
+                stream_type,
+                rx_index,
+            )
 
-        return response
+            # Send join command
+            response = await self._send_command(command)
+
+            if response.get("status") != "SUCCESS":
+                error = response.get("error", {})
+                msg = ERROR_JOIN_FAILED.format(
+                    message=error.get("message", "Unknown error")
+                )
+                raise RiverLinkApiClientError(msg)
+
+            # Immediately verify (no delay - hardware state is ready)
+            device_response = await self._get_device_state_internal(receiver_id)
+
+            if self._is_subscription_streaming(device_response, stream_type, rx_index):
+                LOGGER.debug(
+                    "Verified %s:%d streaming on %s (attempt %d)",
+                    stream_type,
+                    rx_index,
+                    receiver_id,
+                    attempt,
+                )
+                return response
+
+            # Not streaming yet - will retry (debug only, expected behavior)
+            LOGGER.debug(
+                "%s:%d not streaming on %s yet (attempt %d/%d)",
+                stream_type,
+                rx_index,
+                receiver_id,
+                attempt,
+                MAX_JOIN_RETRIES,
+            )
+
+        # All retries exhausted - raise exception
+        msg = ERROR_JOIN_NOT_STREAMING.format(
+            stream_type=stream_type,
+            index=rx_index,
+            receiver_id=receiver_id,
+            attempts=MAX_JOIN_RETRIES,
+        )
+        raise RiverLinkApiClientError(msg)
 
     @with_lock
     async def async_leave_subscription(
         self,
         device_id: str,
         stream_type: str = "HDMI",
-        index: int = 0,
+        index: int = DEFAULT_STREAM_INDEX,
     ) -> dict[str, Any]:
         """
-        Leave a subscription.
+        Leave subscription with verification.
 
-        Audio (HDMI_AUDIO) automatically stops when leaving HDMI.
+        Verifies that stream actually stops. Retries if needed.
 
         Args:
             device_id: Receiver device ID
             stream_type: Stream type (default: HDMI)
-            index: Subscription index (default: 0)
+            index: Subscription index (default: DEFAULT_STREAM_INDEX)
 
         Returns:
             API response dict
+
+        Raises:
+            RiverLinkApiClientError: If leave fails or verification fails after retries
 
         """
         if not self.is_connected:
             await self.connect()
 
         command = f"leave {device_id}:{stream_type}:{index}"
-        response = await self._send_command(command)
 
-        if response.get("status") != "SUCCESS":
-            error = response.get("error", {})
-            msg = f"Failed to leave subscription: {error.get('message', 'Unknown error')}"
-            raise RiverLinkApiClientError(msg)
+        for attempt in range(1, MAX_LEAVE_RETRIES + 1):
+            LOGGER.debug(
+                "Leave attempt %d/%d: %s:%s:%d",
+                attempt,
+                MAX_LEAVE_RETRIES,
+                device_id,
+                stream_type,
+                index,
+            )
 
-        return response
+            # Send leave command
+            response = await self._send_command(command)
+
+            if response.get("status") != "SUCCESS":
+                error = response.get("error", {})
+                msg = ERROR_LEAVE_FAILED.format(
+                    message=error.get("message", "Unknown error")
+                )
+                raise RiverLinkApiClientError(msg)
+
+            # Immediately verify stopped (no delay)
+            device_response = await self._get_device_state_internal(device_id)
+
+            if not self._is_subscription_streaming(device_response, stream_type, index):
+                LOGGER.debug(
+                    "Verified %s:%d stopped on %s",
+                    stream_type,
+                    index,
+                    device_id,
+                )
+                return response
+
+            # Still streaming - will retry
+            LOGGER.debug(
+                "%s:%d still streaming on %s (attempt %d/%d)",
+                stream_type,
+                index,
+                device_id,
+                attempt,
+                MAX_LEAVE_RETRIES,
+            )
+
+        # All retries exhausted - raise exception
+        msg = ERROR_LEAVE_STILL_STREAMING.format(
+            stream_type=stream_type,
+            index=index,
+            device_id=device_id,
+            attempts=MAX_LEAVE_RETRIES,
+        )
+        raise RiverLinkApiClientError(msg)
 
     @with_lock
     async def async_set_video_mode(
