@@ -397,12 +397,12 @@ class RiverLinkApiClient:
         """
         result = device_data.get("result", {})
         devices = result.get("devices", [])
-        
+
         # Get first device from array (single device query)
         if not devices:
             return False
         device = devices[0]
-        
+
         subscriptions = device.get("subscriptions", [])
 
         for sub in subscriptions:
