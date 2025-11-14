@@ -396,7 +396,13 @@ class RiverLinkApiClient:
 
         """
         result = device_data.get("result", {})
-        device = result.get("device", {})
+        devices = result.get("devices", [])
+        
+        # Get first device from array (single device query)
+        if not devices:
+            return False
+        device = devices[0]
+        
         subscriptions = device.get("subscriptions", [])
 
         for sub in subscriptions:
@@ -532,7 +538,7 @@ class RiverLinkApiClient:
         LOGGER.debug(
             "Join verification failed after %d attempts. Final device state: %s",
             MAX_JOIN_RETRIES,
-            json.dumps(device_response, indent=2),
+            json.dumps(device_response),
         )
         msg = ERROR_JOIN_NOT_STREAMING.format(
             stream_type=stream_type,
@@ -623,7 +629,7 @@ class RiverLinkApiClient:
         LOGGER.debug(
             "Leave verification failed after %d attempts. Final device state: %s",
             MAX_LEAVE_RETRIES,
-            json.dumps(device_response, indent=2),
+            json.dumps(device_response),
         )
         msg = ERROR_LEAVE_STILL_STREAMING.format(
             stream_type=stream_type,
