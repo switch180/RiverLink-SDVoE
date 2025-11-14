@@ -20,6 +20,8 @@ from .const import (
     MAX_JOIN_RETRIES,
     MAX_LEAVE_RETRIES,
     STATE_STREAMING,
+    VERIFY_RETRY_INITIAL_DELAY,
+    VERIFY_RETRY_MAX_DELAY,
 )
 from .errors import (
     ERROR_CONNECTION_CLOSED,
@@ -473,6 +475,7 @@ class RiverLinkApiClient:
             await self.connect()
 
         command = f"join {transmitter_id}:{stream_type}:{tx_index} {receiver_id}:{stream_type}:{rx_index}"
+        delay = VERIFY_RETRY_INITIAL_DELAY
 
         for attempt in range(1, MAX_JOIN_RETRIES + 1):
             LOGGER.debug(
@@ -497,7 +500,7 @@ class RiverLinkApiClient:
                 )
                 raise RiverLinkApiClientError(msg)
 
-            # Immediately verify (no delay - hardware state is ready)
+            # Verify streaming state
             device_response = await self._get_device_state_internal(receiver_id)
 
             if self._is_subscription_streaming(device_response, stream_type, rx_index):
@@ -510,17 +513,27 @@ class RiverLinkApiClient:
                 )
                 return response
 
-            # Not streaming yet - will retry (debug only, expected behavior)
-            LOGGER.debug(
-                "%s:%d not streaming on %s yet (attempt %d/%d)",
-                stream_type,
-                rx_index,
-                receiver_id,
-                attempt,
-                MAX_JOIN_RETRIES,
-            )
+            # Not streaming yet - wait before retry (debug only, expected behavior)
+            if attempt < MAX_JOIN_RETRIES:
+                LOGGER.debug(
+                    "%s:%d not streaming on %s yet, waiting %.1fs before retry %d/%d",
+                    stream_type,
+                    rx_index,
+                    receiver_id,
+                    delay,
+                    attempt,
+                    MAX_JOIN_RETRIES,
+                )
+                await asyncio.sleep(delay)
+                # Exponential backoff with cap
+                delay = min(delay * 2, VERIFY_RETRY_MAX_DELAY)
 
-        # All retries exhausted - raise exception
+        # All retries exhausted - dump device state for debugging and raise exception
+        LOGGER.debug(
+            "Join verification failed after %d attempts. Final device state: %s",
+            MAX_JOIN_RETRIES,
+            json.dumps(device_response, indent=2),
+        )
         msg = ERROR_JOIN_NOT_STREAMING.format(
             stream_type=stream_type,
             index=rx_index,
@@ -557,6 +570,7 @@ class RiverLinkApiClient:
             await self.connect()
 
         command = f"leave {device_id}:{stream_type}:{index}"
+        delay = VERIFY_RETRY_INITIAL_DELAY
 
         for attempt in range(1, MAX_LEAVE_RETRIES + 1):
             LOGGER.debug(
@@ -578,7 +592,7 @@ class RiverLinkApiClient:
                 )
                 raise RiverLinkApiClientError(msg)
 
-            # Immediately verify stopped (no delay)
+            # Verify stopped
             device_response = await self._get_device_state_internal(device_id)
 
             if not self._is_subscription_streaming(device_response, stream_type, index):
@@ -590,17 +604,27 @@ class RiverLinkApiClient:
                 )
                 return response
 
-            # Still streaming - will retry
-            LOGGER.debug(
-                "%s:%d still streaming on %s (attempt %d/%d)",
-                stream_type,
-                index,
-                device_id,
-                attempt,
-                MAX_LEAVE_RETRIES,
-            )
+            # Still streaming - wait before retry
+            if attempt < MAX_LEAVE_RETRIES:
+                LOGGER.debug(
+                    "%s:%d still streaming on %s, waiting %.1fs before retry %d/%d",
+                    stream_type,
+                    index,
+                    device_id,
+                    delay,
+                    attempt,
+                    MAX_LEAVE_RETRIES,
+                )
+                await asyncio.sleep(delay)
+                # Exponential backoff with cap
+                delay = min(delay * 2, VERIFY_RETRY_MAX_DELAY)
 
-        # All retries exhausted - raise exception
+        # All retries exhausted - dump device state for debugging and raise exception
+        LOGGER.debug(
+            "Leave verification failed after %d attempts. Final device state: %s",
+            MAX_LEAVE_RETRIES,
+            json.dumps(device_response, indent=2),
+        )
         msg = ERROR_LEAVE_STILL_STREAMING.format(
             stream_type=stream_type,
             index=index,

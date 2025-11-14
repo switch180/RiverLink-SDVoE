@@ -31,6 +31,8 @@ CONNECT_RETRY_MAX_DELAY = 10.0  # Maximum delay between retries
 # Subscription verification retry limits
 MAX_JOIN_RETRIES = 5  # Maximum retries for join until streaming verified
 MAX_LEAVE_RETRIES = 3  # Maximum retries for leave until stopped verified
+VERIFY_RETRY_INITIAL_DELAY = 0.5  # Initial delay between retries (seconds)
+VERIFY_RETRY_MAX_DELAY = 2.0  # Maximum delay between retries (seconds)
 
 # Device attributes
 ATTR_DEVICE_ID = "device_id"
