@@ -21,6 +21,7 @@ from .const import (
     ATTR_RESOLUTION_WIDTH,
     ATTR_SOURCE_DEVICE_ID,
     ATTR_STREAM_INDEX,
+    ATTR_STREAM_STATE,
     ATTR_STREAM_TYPE,
     DEFAULT_DISPLAY_MODE,
     DEFAULT_RESOLUTION_PRESET,
@@ -37,6 +38,8 @@ from .const import (
     PRESET_STATUS_STORED,
     RESOLUTION_4K_HEIGHT,
     RESOLUTION_PRESETS,
+    STATE_STOPPED,
+    STREAM_TYPE_HDMI,
 )
 from .entity import RiverLinkEntity
 from .errors import (
@@ -178,12 +181,36 @@ class RiverLinkReceiverSourceSelect(RiverLinkEntity, SelectEntity):
             "supports_multiview": False,  # Future flag
         }
 
+    def _find_hdmi_stream(self, tx_data: dict[str, Any], index: int = DEFAULT_STREAM_INDEX) -> dict[str, Any] | None:
+        """
+        Find HDMI stream by index in transmitter data.
+
+        Args:
+            tx_data: Transmitter device data from coordinator
+            index: Stream index to find (default: DEFAULT_STREAM_INDEX)
+
+        Returns:
+            Stream dict if found, None otherwise
+
+        """
+        if not tx_data:
+            return None
+
+        for stream in tx_data.get("streams", []):
+            if (
+                stream.get(ATTR_STREAM_TYPE) == STREAM_TYPE_HDMI
+                and stream.get(ATTR_STREAM_INDEX) == index
+            ):
+                return stream
+
+        return None
+
     async def async_select_option(self, option: str) -> None:
         """
-        Handle user selection.
+        Handle user selection with auto-start support.
 
         'None' → disconnect / unroute the receiver.
-        Otherwise → join the selected transmitter.
+        Otherwise → join the selected transmitter (auto-starting stream if needed).
         """
         # Handle disconnect case
         if option == "None":
@@ -200,6 +227,37 @@ class RiverLinkReceiverSourceSelect(RiverLinkEntity, SelectEntity):
             )
             msg = f"Invalid option: {option}"
             raise ValueError(msg)
+
+        # Check if transmitter stream is stopped and auto-start if needed
+        transmitters = self.coordinator.data.get("transmitters", {})
+        tx_data = transmitters.get(transmitter_id)
+        hdmi_stream = self._find_hdmi_stream(tx_data, DEFAULT_STREAM_INDEX)
+
+        if hdmi_stream and hdmi_stream.get(ATTR_STREAM_STATE) == STATE_STOPPED:
+            # Auto-start the stream
+            tx_name = tx_data.get(ATTR_DEVICE_NAME, transmitter_id) if tx_data else transmitter_id
+            LOGGER.info(
+                "Auto-starting stopped HDMI:%d stream for transmitter %s (%s) before join",
+                DEFAULT_STREAM_INDEX,
+                transmitter_id,
+                tx_name,
+            )
+
+            try:
+                client = self.coordinator.config_entry.runtime_data.client
+                await client.async_start_stream(
+                    device_id=transmitter_id,
+                    stream_type=STREAM_TYPE_HDMI,
+                    stream_index=DEFAULT_STREAM_INDEX,
+                )
+                # NO SLEEP - rely on join retry logic to handle timing
+            except RiverLinkApiClientError as exc:
+                LOGGER.warning(
+                    "Failed to auto-start stream for %s: %s. Attempting join anyway.",
+                    transmitter_id,
+                    exc,
+                )
+                # Continue anyway - join retry may still work
 
         await self._async_join_source(transmitter_id)
 

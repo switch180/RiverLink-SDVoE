@@ -43,3 +43,12 @@ ERROR_GET_DEVICE_STATE_FAILED = "Failed to get device state: {message}"
 # UI error messages (for HomeAssistantError)
 ERROR_UI_JOIN_FAILED = "Failed to switch video source: {error}"
 ERROR_UI_LEAVE_FAILED = "Failed to disconnect video source: {error}"
+
+# Stream control errors
+ERROR_START_STREAM_FAILED = (
+    "Failed to start stream {stream_type}:{index} on {device_id}: {message}"
+)
+ERROR_STOP_STREAM_FAILED = (
+    "Failed to stop stream {stream_type}:{index} on {device_id}: {message}"
+)
+ERROR_STREAM_NOT_FOUND = "Stream {stream_type}:{index} not found on device {device_id}"

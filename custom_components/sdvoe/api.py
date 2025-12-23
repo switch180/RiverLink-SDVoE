@@ -11,6 +11,8 @@ from .const import (
     API_GET_ALL_DEVICES,
     API_REQUEST_COMMAND,
     API_REQUIRE_COMMAND,
+    API_START_STREAM,
+    API_STOP_STREAM,
     API_TIMEOUT,
     CONNECT_RETRY_INITIAL_DELAY,
     CONNECT_RETRY_MAX_DELAY,
@@ -37,6 +39,8 @@ from .errors import (
     ERROR_NO_REQUEST_ID,
     ERROR_NOT_CONNECTED,
     ERROR_SCALING_MODE_REQUIRES_RESOLUTION,
+    ERROR_START_STREAM_FAILED,
+    ERROR_STOP_STREAM_FAILED,
     ERROR_UNKNOWN_VIDEO_MODE,
 )
 
@@ -717,4 +721,106 @@ class RiverLinkApiClient:
             msg = f"Failed to set video mode: {error.get('message', 'Unknown error')}"
             raise RiverLinkApiClientError(msg)
 
+        return response
+
+    @with_lock
+    async def async_start_stream(
+        self,
+        device_id: str,
+        stream_type: str = "HDMI",
+        stream_index: int = DEFAULT_STREAM_INDEX,
+    ) -> dict[str, Any]:
+        """
+        Start a transmitter stream.
+
+        Command format: start {device_id}:{stream_type}:{stream_index}
+        Example: start f82285014a66:HDMI:0
+
+        Args:
+            device_id: Transmitter device ID
+            stream_type: Stream type (default: HDMI)
+            stream_index: Stream index (default: DEFAULT_STREAM_INDEX)
+
+        Returns:
+            API response dict
+
+        Raises:
+            RiverLinkApiClientError: If command fails
+
+        """
+        if not self.is_connected:
+            await self.connect()
+
+        command = f"{API_START_STREAM} {device_id}:{stream_type}:{stream_index}"
+        LOGGER.debug("Starting stream: %s", command)
+
+        response = await self._send_command(command)
+
+        if response.get("status") != "SUCCESS":
+            error = response.get("error", {})
+            msg = ERROR_START_STREAM_FAILED.format(
+                stream_type=stream_type,
+                index=stream_index,
+                device_id=device_id,
+                message=error.get("message", "Unknown error"),
+            )
+            raise RiverLinkApiClientError(msg)
+
+        LOGGER.info(
+            "Successfully started stream %s:%s:%d",
+            device_id,
+            stream_type,
+            stream_index,
+        )
+        return response
+
+    @with_lock
+    async def async_stop_stream(
+        self,
+        device_id: str,
+        stream_type: str = "HDMI",
+        stream_index: int = DEFAULT_STREAM_INDEX,
+    ) -> dict[str, Any]:
+        """
+        Stop a transmitter stream.
+
+        Command format: stop {device_id}:{stream_type}:{stream_index}
+        Example: stop f82285014a66:HDMI:0
+
+        Args:
+            device_id: Transmitter device ID
+            stream_type: Stream type (default: HDMI)
+            stream_index: Stream index (default: DEFAULT_STREAM_INDEX)
+
+        Returns:
+            API response dict
+
+        Raises:
+            RiverLinkApiClientError: If command fails
+
+        """
+        if not self.is_connected:
+            await self.connect()
+
+        command = f"{API_STOP_STREAM} {device_id}:{stream_type}:{stream_index}"
+        LOGGER.debug("Stopping stream: %s", command)
+
+        response = await self._send_command(command)
+
+        if response.get("status") != "SUCCESS":
+            error = response.get("error", {})
+            msg = ERROR_STOP_STREAM_FAILED.format(
+                stream_type=stream_type,
+                index=stream_index,
+                device_id=device_id,
+                message=error.get("message", "Unknown error"),
+            )
+            raise RiverLinkApiClientError(msg)
+
+        LOGGER.info(
+            "Successfully stopped stream %s:%s:%d",
+            device_id,
+            stream_type,
+            stream_index,
+        )
         return response

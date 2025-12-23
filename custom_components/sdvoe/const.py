@@ -21,6 +21,8 @@ API_TIMEOUT = 10  # seconds
 API_REQUIRE_COMMAND = "require blueriver_api"
 API_GET_ALL_DEVICES = "get all device"
 API_REQUEST_COMMAND = "request"
+API_START_STREAM = "start"
+API_STOP_STREAM = "stop"
 
 # Connection retry settings (for add-on startup delays)
 MAX_CONNECT_RETRIES_SETUP = 5  # During integration setup
