@@ -77,9 +77,8 @@ class TransmitterStreamSwitch(RiverLinkEntity, SwitchEntity):
         stream_index: int,
     ) -> None:
         """Initialize the switch."""
-        super().__init__(coordinator)
+        super().__init__(coordinator, device_id)
 
-        self._device_id = device_id
         self._device_name = device_name
         self._stream_index = stream_index
 
@@ -87,16 +86,6 @@ class TransmitterStreamSwitch(RiverLinkEntity, SwitchEntity):
         self._attr_unique_id = f"{device_id}_hdmi_stream_{stream_index}"
         self._attr_name = f"HDMI Stream {stream_index}"
         self._attr_translation_key = "transmitter_stream"
-
-    @property
-    def device_info(self) -> dict[str, Any]:
-        """Return device information about this transmitter."""
-        return {
-            "identifiers": {(self.platform.domain, self._device_id)},
-            "name": self._device_name,
-            "manufacturer": "SDVoE",
-            "model": "Transmitter",
-        }
 
     def _get_stream_data(self) -> dict[str, Any] | None:
         """Get stream data from coordinator."""
