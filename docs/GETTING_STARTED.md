@@ -135,7 +135,7 @@ Once configured, the integration creates the following entities:
   - Display Mode
   - Resolution Preset
 
-#### Per Transmitter (7 entities)
+#### Per Transmitter (8+ entities)
 - **Sensors** (6):
   - Temperature
   - HDMI Stream
@@ -145,6 +145,8 @@ Once configured, the integration creates the following entities:
   - Firmware Version
 - **Binary Sensors** (1):
   - Online Status
+- **Switches** (1 per HDMI stream):
+  - HDMI Stream {index} (start/stop streaming)
 
 ### Basic Usage
 
@@ -167,6 +169,20 @@ Once configured, the integration creates the following entities:
 2. Choose from 26 named presets (broadcast + computer formats)
 3. Resolution changes apply instantly
 
+**Managing Transmitter Streams**:
+
+Transmitters have switch entities to control HDMI streaming:
+
+1. Find your transmitter's "HDMI Stream {INDEX}" switch entity
+2. Switch ON to start streaming / OFF to stop streaming
+3. Useful after device reboots or for power management
+
+**Auto-Start Feature**:
+- When you select a stopped transmitter as a video source, the integration automatically starts the stream for you
+- No manual intervention needed - just select the source and it works
+- Check logs for "Auto-starting stopped stream..." messages if troubleshooting
+
+---
 
 ## 🆘 Need Help?
 
