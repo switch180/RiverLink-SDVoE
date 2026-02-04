@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "RiverLink SDVoE Matrix Setup",
-        "description": "Configure your SDVoE API server connection. If you need help, visit: https://github.com/switch180/RiverLink-SDVoE",
+        "description": "Configure your SDVoE API server connection.",
         "data": {
           "host": "API Server IP Address",
           "port": "API Server Port",
